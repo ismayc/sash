@@ -1,10 +1,12 @@
+<p align="center">
+  <img src="Resources/logo.jpeg" alt="Sash — Custom Window Snap & Group Layouts for macOS">
+</p>
+
 # Sash
 
 A native macOS menu-bar app for snapping and grouping windows into your own custom layouts —
 up to 9 windows per screen in any arrangement. Drag a window and it snaps into a zone,
 FancyZones-style. Built in Swift for Apple Silicon / macOS 13+.
-
-<p align="center"><img src="Resources/AppIcon.icns" width="96" alt="Sash icon"></p>
 
 ## Features
 
