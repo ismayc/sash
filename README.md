@@ -79,6 +79,25 @@ Accessibility) — the app can't move other apps' windows without it.
 Without this, each rebuild is ad-hoc signed and macOS re-asks for Accessibility. With it,
 `build_app.sh` signs with a stable identity so you grant permission just once.
 
+## Package as a DMG
+
+```bash
+./scripts/make_dmg.sh release   # builds the app, then packages build/Sash.dmg
+```
+
+The disk image contains `Sash.app` and an `Applications` shortcut — open it and drag Sash
+onto Applications to install.
+
+### Installing from the DMG
+
+Sash is signed ad-hoc (no paid Apple Developer ID), so on a machine that didn't build it,
+Gatekeeper will warn the first time. To open it anyway:
+
+- **Right-click** `Sash.app` ▸ **Open** ▸ **Open** (only needed once), or
+- clear the download quarantine flag: `xattr -dr com.apple.quarantine /Applications/Sash.app`
+
+For friction-free distribution you'd need an Apple Developer ID plus notarization.
+
 ## Tests & coverage
 
 The pure logic (geometry, layouts, persistence) lives in the `SashKit` target and is
