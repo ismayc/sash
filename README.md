@@ -8,6 +8,11 @@ A native macOS menu-bar app for snapping and grouping windows into your own cust
 up to 9 windows per screen in any arrangement. Drag a window and it snaps into a zone,
 FancyZones-style. Built in Swift for Apple Silicon / macOS 13+.
 
+> **sash** *(noun)* — "the framework in which panes of glass are set in a window or door."
+> — [Merriam-Webster](https://www.merriam-webster.com/dictionary/sash)
+>
+> Fittingly, Sash is the framework that sets your windows' panes into place.
+
 ## Features
 
 - **Drag-to-snap** — arm a layout, then drag any window; zones light up and it snaps into place.
