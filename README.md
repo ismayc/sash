@@ -18,6 +18,21 @@ FancyZones-style. Built in Swift for Apple Silicon / macOS 13+.
 >
 > Fittingly, Sash is the framework that sets your windows' panes into place.
 
+## Prior art & a shoutout to MacsyZones
+
+Sash covers the same ground as **[MacsyZones](https://macsyzones.com/)** by
+**[Meowing Cat (rohanrhu)](https://github.com/rohanrhu/MacsyZones)** — a mature, open-source
+macOS zone-snapping app. I built Sash without realizing MacsyZones already existed, and it's
+the much more developed version: it's been polished over many releases and has extras like
+Shake-to-Snap and Quick Snapper. If you want a battle-tested tool today, go grab it:
+
+```bash
+brew install --cask macsyzones
+```
+
+Sash remains a smaller, from-scratch take that I maintain for my own workflow. Big thanks to
+Meowing Cat for the excellent prior art. 🐈
+
 ## Features
 
 - **Drag-to-snap** — arm a layout, then drag any window; zones light up and it snaps into place.
