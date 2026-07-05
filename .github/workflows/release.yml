@@ -1,0 +1,48 @@
+name: Release
+
+# Cut a release by pushing a version tag, e.g.:
+#   git tag v0.1.0 && git push origin v0.1.0
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # needed to create the release
+
+jobs:
+  release:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build DMG
+        run: ./scripts/make_dmg.sh release
+
+      - name: Name the DMG with the version
+        run: mv build/Sash.dmg "build/Sash-${GITHUB_REF_NAME}.dmg"
+
+      - name: Write release notes
+        run: |
+          cat > release-notes.md <<'NOTES'
+          ### Install
+
+          1. Download the **.dmg** below and open it.
+          2. Drag **Sash** onto the **Applications** folder.
+          3. First launch: right-click `Sash.app` → **Open** → **Open**. Sash is ad-hoc signed
+             (no paid Apple Developer ID), so Gatekeeper asks once. Or run:
+             `xattr -dr com.apple.quarantine /Applications/Sash.app`
+          4. Grant **Accessibility** (System Settings → Privacy & Security → Accessibility) so
+             Sash can move windows.
+
+          See the [README](https://github.com/ismayc/sash#readme) for full usage.
+          NOTES
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "build/Sash-${GITHUB_REF_NAME}.dmg" \
+            --title "Sash $GITHUB_REF_NAME" \
+            --notes-file release-notes.md

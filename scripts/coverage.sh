@@ -26,3 +26,20 @@ xcrun llvm-cov report "$BIN" \
     -instr-profile="$COVDIR/tests.profdata" \
     -ignore-filename-regex='(Tests|\.build)/' \
     Sources/SashKit
+
+# Enforce a coverage floor so the README badge stays honest. If new SashKit code lands
+# without tests, this fails CI — add tests (or lower THRESHOLD deliberately).
+THRESHOLD="${COVERAGE_THRESHOLD:-100}"
+PERCENT="$(xcrun llvm-cov export "$BIN" \
+    -instr-profile="$COVDIR/tests.profdata" \
+    -summary-only \
+    -ignore-filename-regex='(Tests|\.build)/' \
+    Sources/SashKit \
+    | python3 -c 'import sys,json; print(json.load(sys.stdin)["data"][0]["totals"]["lines"]["percent"])')"
+
+printf '\nLine coverage: %.2f%% (floor: %s%%)\n' "$PERCENT" "$THRESHOLD"
+if ! awk "BEGIN{exit !($PERCENT >= $THRESHOLD)}"; then
+    echo "✘ Coverage below the required floor."
+    exit 1
+fi
+echo "✓ Coverage meets the floor."

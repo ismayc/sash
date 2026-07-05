@@ -4,6 +4,11 @@
 
 # Sash
 
+[![CI](https://github.com/ismayc/sash/actions/workflows/ci.yml/badge.svg)](https://github.com/ismayc/sash/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/SashKit%20coverage-100%25-brightgreen)](#tests--coverage)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+![Platform](https://img.shields.io/badge/macOS-13%2B-black?logo=apple)
+
 A native macOS menu-bar app for snapping and grouping windows into your own custom layouts —
 up to 9 windows per screen in any arrangement. Drag a window and it snaps into a zone,
 FancyZones-style. Built in Swift for Apple Silicon / macOS 13+.
