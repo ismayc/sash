@@ -7,8 +7,11 @@ struct DragSnapConfig {
     let layout: Layout
     /// Restrict snapping to one monitor; nil means any monitor.
     let targetDisplayID: CGDirectDisplayID?
-    /// Only snap while the Control key is held (opt-in per-drag mode).
-    let requireControlHeld: Bool
+    /// Only snap while Shift is held (opt-in per-drag mode).
+    ///
+    /// Shift rather than Control: macOS rewrites ⌃-click into a secondary click, so a left-drag
+    /// never begins while Control is down and the mouse monitors below see nothing to snap.
+    let requireShiftHeld: Bool
 }
 
 /// Watches global mouse activity and, while an armed layout is active, snaps whatever window
@@ -82,9 +85,10 @@ final class DragSnapController {
         let moved = hypot(now.x - start.x, now.y - start.y) >= moveThreshold
         let screen = Geometry.screenUnderMouse
         let onTarget = config.targetDisplayID == nil || screen.displayID == config.targetDisplayID
-        let controlOK = !config.requireControlHeld || NSEvent.modifierFlags.contains(.control)
+        // Read the live flags rather than the event's, so pressing Shift mid-drag counts.
+        let shiftOK = !config.requireShiftHeld || NSEvent.modifierFlags.contains(.shift)
 
-        guard moved, onTarget, controlOK else {
+        guard moved, onTarget, shiftOK else {
             hideOverlay()
             engaged = false
             return

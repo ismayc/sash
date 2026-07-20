@@ -11,19 +11,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // Drag-to-snap state (persisted in UserDefaults).
     private var activeLayout: Layout?
     private var activeDisplayID: CGDirectDisplayID?
-    private var requireControlHeld = false
+    private var requireShiftHeld = false
 
     private lazy var dragSnap = DragSnapController(configProvider: { [weak self] in
         guard let self, let layout = self.activeLayout else { return nil }
         return DragSnapConfig(layout: layout,
                               targetDisplayID: self.activeDisplayID,
-                              requireControlHeld: self.requireControlHeld)
+                              requireShiftHeld: self.requireShiftHeld)
     })
 
     private let defaults = UserDefaults.standard
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        requireControlHeld = defaults.bool(forKey: "requireControlHeld")
+        loadHoldPreference()
         if defaults.object(forKey: "activeDisplayID") != nil {
             activeDisplayID = CGDirectDisplayID(defaults.integer(forKey: "activeDisplayID"))
         }
@@ -76,10 +76,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(dragLayoutMenuItem())
         menu.addItem(monitorMenuItem())
 
-        let holdItem = NSMenuItem(title: "Snap only while holding ⌃ (Control)",
-                                  action: #selector(toggleHoldControl), keyEquivalent: "")
+        let holdItem = NSMenuItem(title: "Snap only while holding ⇧ (Shift)",
+                                  action: #selector(toggleHoldShift), keyEquivalent: "")
         holdItem.target = self
-        holdItem.state = requireControlHeld ? .on : .off
+        holdItem.state = requireShiftHeld ? .on : .off
         menu.addItem(holdItem)
 
         let hint = NSMenuItem(title: "Tip: press Esc mid-drag to cancel a snap", action: nil, keyEquivalent: "")
@@ -150,7 +150,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func monitorMenuItem() -> NSMenuItem {
         let current = NSScreen.screen(withID: activeDisplayID)
-        let title = "Snap on monitor:  \(current.flatMap { s in NSScreen.screens.firstIndex(of: s).map { "Display \($0 + 1)" } } ?? "Any")"
+        let title = "Snap on monitor:  \(current?.uniqueDisplayName ?? "Any")"
         let header = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         let submenu = NSMenu()
         let any = NSMenuItem(title: "Any monitor", action: #selector(chooseMonitor(_:)), keyEquivalent: "")
@@ -235,9 +235,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Preferences
 
-    @objc private func toggleHoldControl() {
-        requireControlHeld.toggle()
-        defaults.set(requireControlHeld, forKey: "requireControlHeld")
+    /// Read the hold-to-snap pref, carrying over the superseded Control and per-modifier settings.
+    private func loadHoldPreference() {
+        if defaults.object(forKey: "requireShiftHeld") != nil {
+            requireShiftHeld = defaults.bool(forKey: "requireShiftHeld")
+        } else {
+            requireShiftHeld = defaults.string(forKey: "holdModifier") != nil
+                || defaults.bool(forKey: "requireControlHeld")
+            defaults.set(requireShiftHeld, forKey: "requireShiftHeld")
+        }
+        defaults.removeObject(forKey: "holdModifier")
+        defaults.removeObject(forKey: "requireControlHeld")
+    }
+
+    @objc private func toggleHoldShift() {
+        requireShiftHeld.toggle()
+        defaults.set(requireShiftHeld, forKey: "requireShiftHeld")
         rebuildMenu()
     }
 

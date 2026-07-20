@@ -41,7 +41,7 @@ Meowing Cat for the excellent prior art. 🐈
 - **Menu-bar picker** — pick a zone from the menu.
 - **Per-monitor** — arm snapping on one display and leave your other monitors free.
 - **Esc to cancel** a snap mid-drag.
-- **Hold-⌃ mode** — optionally require holding Control to snap, so casual drags are untouched.
+- **Hold-⇧ mode** — optionally require holding Shift to snap, so casual drags are untouched.
 - **Launch at Login**, and a stable **app icon**.
 
 ## Drag-to-snap (the main way to place windows)

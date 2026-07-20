@@ -198,9 +198,7 @@ final class CustomSetupWindowController: NSWindowController {
         screens = NSScreen.screens
         monitorPopup.removeAllItems()
         for (i, s) in screens.enumerated() {
-            let px = Int(s.frame.width * (s.backingScaleFactor))
-            let py = Int(s.frame.height * (s.backingScaleFactor))
-            monitorPopup.addItem(withTitle: "Display \(i + 1) — \(px)×\(py)")
+            monitorPopup.addItem(withTitle: s.label(index: i))
         }
         if let idx = screens.firstIndex(of: currentScreen) {
             monitorPopup.selectItem(at: idx)

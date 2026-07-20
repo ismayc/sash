@@ -26,9 +26,9 @@ cp "$BIN" "$APP/Contents/MacOS/Sash"
 cp "$ROOT/scripts/Info.plist" "$APP/Contents/Info.plist"
 cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 
-if security find-identity -v -p codesigning 2>/dev/null | grep -q "$IDENTITY"; then
-    echo "▶ Signing with stable identity “$IDENTITY”…"
-    codesign --force --deep --sign "$IDENTITY" "$APP"
+if security find-identity -v -p codesigning 2>/dev/null | grep -q "${IDENTITY}"; then
+    echo "▶ Signing with stable identity “${IDENTITY}”…"
+    codesign --force --deep --sign "${IDENTITY}" "$APP"
 else
     echo "▶ Signing ad-hoc (run scripts/make_cert.sh once to make the Accessibility grant stick)…"
     codesign --force --deep --sign - "$APP"

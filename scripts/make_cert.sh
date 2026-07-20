@@ -13,26 +13,34 @@ set -euo pipefail
 IDENTITY="Sash Self-Signed"
 KEYCHAIN="$HOME/Library/Keychains/login.keychain-db"
 
-if security find-identity -v -p codesigning "$KEYCHAIN" | grep -q "$IDENTITY"; then
-    echo "✓ Identity “$IDENTITY” already exists. Nothing to do."
+if security find-identity -v -p codesigning "$KEYCHAIN" | grep -q "${IDENTITY}"; then
+    echo "✓ Identity “${IDENTITY}” already exists. Nothing to do."
     exit 0
 fi
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
+# Transient — the p12 exists only between the two commands below. Apple's `security` rejects
+# empty-password PKCS#12 bundles, so it has to be something.
+P12_PASS="sash-import"
+
 echo "▶ Generating key + self-signed code-signing certificate…"
 openssl genrsa -out "$TMP/key.pem" 2048 >/dev/null 2>&1
 openssl req -new -x509 -key "$TMP/key.pem" -out "$TMP/cert.pem" -days 3650 \
-    -subj "/CN=$IDENTITY" \
+    -subj "/CN=${IDENTITY}" \
     -addext "basicConstraints=critical,CA:false" \
     -addext "keyUsage=critical,digitalSignature" \
     -addext "extendedKeyUsage=critical,codeSigning" >/dev/null 2>&1
-openssl pkcs12 -export -inkey "$TMP/key.pem" -in "$TMP/cert.pem" \
-    -out "$TMP/cert.p12" -passout pass: -name "$IDENTITY" >/dev/null 2>&1
+# OpenSSL 3 defaults to AES-256 + SHA-256 MAC, which Apple's Security framework cannot read
+# ("MAC verification failed during PKCS12 import"). Pin the legacy 3DES + SHA-1 encoding it
+# does understand. Errors are NOT silenced here — a bad p12 fails confusingly downstream.
+openssl pkcs12 -export -legacy -inkey "$TMP/key.pem" -in "$TMP/cert.pem" \
+    -out "$TMP/cert.p12" -passout "pass:$P12_PASS" -name "${IDENTITY}" \
+    -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -macalg sha1
 
 echo "▶ Importing into the login keychain (allowing codesign to use it)…"
-security import "$TMP/cert.p12" -k "$KEYCHAIN" -P "" -T /usr/bin/codesign -A
+security import "$TMP/cert.p12" -k "$KEYCHAIN" -P "$P12_PASS" -T /usr/bin/codesign -A
 
 echo "▶ Trusting the certificate for code signing (may prompt for your login password)…"
 # Trust so codesign accepts it as a valid signing identity.
@@ -41,6 +49,15 @@ sudo security add-trusted-cert -d -r trustRoot -p codeSign \
     security add-trusted-cert -r trustRoot -p codeSign -k "$KEYCHAIN" "$TMP/cert.pem" || true
 
 echo
-echo "✓ Created identity “$IDENTITY”."
+# An imported-but-untrusted cert does not show up as a *valid* codesigning identity, and
+# build_app.sh would quietly fall back to ad-hoc again. Catch that here instead.
+if ! security find-identity -v -p codesigning | grep -q "${IDENTITY}"; then
+    echo "✗ “${IDENTITY}” imported but is not a valid codesigning identity — the trust step"
+    echo "  did not take. Open Keychain Access, find “${IDENTITY}” in the login keychain,"
+    echo "  and set Trust → Code Signing to “Always Trust”, then re-run this script."
+    exit 1
+fi
+
+echo "✓ Created identity “${IDENTITY}”."
 echo "  Rebuild with ./scripts/build_app.sh — it will sign with this identity automatically."
 echo "  Grant Accessibility once more after the first signed build; it will then persist."
