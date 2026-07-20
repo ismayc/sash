@@ -28,7 +28,9 @@ public enum DisplayNaming {
 
         var seen: [String: Int] = [:]
         return base.map { name in
-            guard totals[name, default: 0] > 1 else { return name }
+            // `totals` was built from `base`, so the lookup always succeeds — a `default:` here
+            // would be unreachable, and the coverage floor is 100%.
+            guard let total = totals[name], total > 1 else { return name }
             let n = (seen[name] ?? 0) + 1
             seen[name] = n
             return "\(name) (\(n))"
