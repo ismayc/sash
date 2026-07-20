@@ -51,22 +51,13 @@ extension NSScreen {
     /// The monitor's own name, e.g. "LG ULTRAWIDE" or "Built-in Retina Display". Falls back to a
     /// positional name for displays that report nothing (some capture cards and KVMs).
     func displayName(index: Int) -> String {
-        let name = localizedName.trimmingCharacters(in: .whitespacesAndNewlines)
-        return name.isEmpty ? "Display \(index + 1)" : name
+        DisplayNaming.name(reported: localizedName, index: index)
     }
 
     /// Names for every attached screen, in `NSScreen.screens` order. Identical models — two of the
     /// same LG, say — get a "(1)", "(2)"… suffix so the menu stays unambiguous.
     static var uniqueDisplayNames: [String] {
-        let base = screens.enumerated().map { $1.displayName(index: $0) }
-        var totals: [String: Int] = [:]
-        for name in base { totals[name, default: 0] += 1 }
-        var seen: [String: Int] = [:]
-        return base.map { name in
-            guard totals[name, default: 0] > 1 else { return name }
-            seen[name, default: 0] += 1
-            return "\(name) (\(seen[name, default: 1]))"
-        }
+        DisplayNaming.uniqueNames(reported: screens.map(\.localizedName))
     }
 
     /// The name for this screen, disambiguated against the other attached screens.

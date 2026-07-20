@@ -6,5 +6,6 @@ runZoneTests()
 runLayoutTests()
 runGeometryMathTests()
 runLayoutStoreTests()
+runDisplayNamingTests()
 
 exit(T.summarize())
