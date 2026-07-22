@@ -110,6 +110,7 @@ final class DragSnapController {
               let idx = zoneIndexUnderMouse(config.layout, on: screen),
               let win = candidate else { return }
         WindowEngine.setFrame(win, appKitRect: config.layout.zones[idx].appKitRect(on: screen))
+        WindowEngine.keepOnScreenAfterSettling(win, within: screen.visibleFrame)
     }
 
     private func keyDown(_ event: NSEvent) {

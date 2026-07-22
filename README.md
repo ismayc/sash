@@ -39,6 +39,8 @@ Meowing Cat for the excellent prior art. 🐈
 - **Custom layout designer** — draw your own zones (any 1–9 window arrangement), name them, reuse them.
 - **Keyboard shortcuts** — send the focused window to a zone with a hotkey.
 - **Menu-bar picker** — pick a zone from the menu.
+- **Auto-arrange** — one toggle per screen: Sash works out the best tiling for whatever
+  windows are there and keeps it that way as windows open and close.
 - **Per-monitor** — arm snapping on one display and leave your other monitors free.
 - **Esc to cancel** a snap mid-drag.
 - **Hold-⇧ mode** — optionally require holding Shift to snap, so casual drags are untouched.
@@ -53,6 +55,40 @@ Meowing Cat for the excellent prior art. 🐈
    highlights. **Release** to snap it in. Press **Esc** mid-drag to cancel.
 
 Repeat for each window — drag them one by one into position.
+
+## Auto-arrange (let Sash decide)
+
+Menu bar ▸ **Auto-arrange windows on:** ▸ pick a monitor (or **Off**) — or press **⌃⌥⌘A** to
+toggle it for whichever screen your mouse is on.
+
+Sash tiles every window on that screen immediately, then keeps it tiled: open a window and it
+re-tiles to fit, close one and the rest expand to fill. Toggle it off and the windows stay
+exactly where they are.
+
+The shape comes from the window count *and* the screen's aspect ratio, so a wide screen splits
+into columns where a laptop falls into a grid:
+
+| Windows | 3440×1440 ultrawide | 1512×982 laptop |
+|---|---|---|
+| 2 | 2 columns | side by side |
+| 3 | 3 columns | 2 on top, 1 across the bottom |
+| 4 | 4 columns | 2×2 |
+| 5 | 3 across, 2 across | 3 across, 2 across |
+
+Where one of **your own** custom layouts has exactly as many zones as there are windows, Sash
+uses that instead of the computed grid — so a layout you designed wins over a guess. (Layouts
+with overlapping zones are skipped: overlaps are for cycling between windows by hand, not for
+tiling.) The built-in layouts don't pre-empt the grid.
+
+Two things it deliberately does **not** do: it won't undo a window you resize by hand (only
+opening or closing a window re-tiles), and it won't move anything while a mouse button is
+down, so it never fights a drag.
+
+Some apps enforce a minimum window size and simply won't shrink to the tile they're given.
+Sash notices and moves the shared edge instead: that window's tile grows to the size it
+insists on and the tile beside it gives up the difference — capped at a quarter of itself, so
+one stubborn window can't squash its neighbour flat. An uneven split that fits beats an even
+one that overlaps.
 
 ## Custom layouts
 
@@ -77,6 +113,7 @@ Modifier stack: **⌃⌥⌘** (Control-Option-Command)
 | ⌃⌥⌘ ← / → | Left / right half |
 | ⌃⌥⌘ ↑ | Maximize |
 | ⌃⌥⌘ 1–9 | Send focused window to zone 1–9 of the **armed** layout |
+| ⌃⌥⌘ A | Toggle **auto-arrange** on the screen under the mouse |
 
 Snaps apply to the focused window (on the armed monitor, or the screen under the mouse).
 
@@ -135,8 +172,8 @@ and is verified manually rather than unit-tested.
 
 | Target | What |
 |---|---|
-| `SashKit` | Pure, testable logic: `Zone`/`Layout` geometry, coordinate math, layout persistence. No AppKit runtime deps. |
-| `Sash` | The menu-bar app: window engine (Accessibility API), drag-snap overlay, hotkeys, the Custom Setup window. |
+| `SashKit` | Pure, testable logic: `Zone`/`Layout` geometry, coordinate math, auto-arrange tiling, layout persistence. No AppKit runtime deps. |
+| `Sash` | The menu-bar app: window engine (Accessibility API), drag-snap overlay, auto-arrange watcher, hotkeys, the Custom Setup window. |
 | `SashTests` | Dependency-free test runner (runs via `swift run`). |
 
 macOS exposes other apps' windows through the **Accessibility API** (`AXUIElement`). Sash

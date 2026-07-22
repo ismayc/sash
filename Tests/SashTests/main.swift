@@ -7,5 +7,7 @@ runLayoutTests()
 runGeometryMathTests()
 runLayoutStoreTests()
 runDisplayNamingTests()
+runAutoArrangeTests()
+runZoneReflowTests()
 
 exit(T.summarize())
