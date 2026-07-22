@@ -139,7 +139,7 @@ Without this, each rebuild is ad-hoc signed and macOS re-asks for Accessibility.
 ## Package as a DMG
 
 ```bash
-./scripts/make_dmg.sh release   # builds the app, then packages build/Sash.dmg
+./scripts/make_dmg.sh release   # builds the app, then packages build/Sash-<version>.dmg
 ```
 
 The disk image contains `Sash.app` and an `Applications` shortcut — open it and drag Sash
