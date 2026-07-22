@@ -31,4 +31,19 @@ public enum GeometryMath {
             height: rect.height
         )
     }
+
+    /// Slide `rect` — keeping its size — so it sits inside `bounds`.
+    ///
+    /// This is the fallback for a window that refuses the size we asked for: some apps have a
+    /// minimum (several Electron-based editors won't go below ~720pt tall), so a half-height
+    /// zone leaves them overhanging. Sliding beats letting the overhang fall off the screen.
+    ///
+    /// When the rect is simply too big for `bounds` it is pinned to the top-left instead: an
+    /// over-tall window keeps its title bar on screen, which is the edge you need to grab.
+    /// Coordinates are AppKit global (bottom-left origin), so "top" is the high-y edge.
+    public static func containing(_ rect: CGRect, within bounds: CGRect) -> CGRect {
+        let x = max(bounds.minX, min(rect.minX, bounds.maxX - rect.width))
+        let y = min(max(rect.minY, bounds.minY), bounds.maxY - rect.height)
+        return CGRect(x: x, y: y, width: rect.width, height: rect.height)
+    }
 }

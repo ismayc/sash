@@ -13,6 +13,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var activeDisplayID: CGDirectDisplayID?
     private var requireShiftHeld = false
 
+    // Auto-arrange state (persisted in UserDefaults).
+    private var autoArrangeDisplayID: CGDirectDisplayID?
+
+    private lazy var autoArrange: AutoArrangeController = {
+        let controller = AutoArrangeController()
+        controller.onScreenLost = { [weak self] in
+            self?.setAutoArrange(displayID: nil)
+        }
+        return controller
+    }()
+
     private lazy var dragSnap = DragSnapController(configProvider: { [weak self] in
         guard let self, let layout = self.activeLayout else { return nil }
         return DragSnapConfig(layout: layout,
@@ -42,6 +53,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let name = defaults.string(forKey: "activeLayoutName"),
            let layout = LayoutStore.shared.layout(named: name) {
             armDragSnap(layout, displayID: activeDisplayID, persist: false)
+        }
+
+        // Restore auto-arrange if it was left on for a screen that is still attached.
+        if defaults.object(forKey: "autoArrangeDisplayID") != nil {
+            setAutoArrange(displayID: CGDirectDisplayID(defaults.integer(forKey: "autoArrangeDisplayID")))
         }
     }
 
@@ -85,6 +101,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let hint = NSMenuItem(title: "Tip: press Esc mid-drag to cancel a snap", action: nil, keyEquivalent: "")
         hint.isEnabled = false
         menu.addItem(hint)
+        menu.addItem(.separator())
+
+        // --- Auto-arrange ---
+        menu.addItem(autoArrangeMenuItem())
+        let autoHint = NSMenuItem(title: "Tip: ⌃⌥⌘A toggles it on the screen under the mouse",
+                                  action: nil, keyEquivalent: "")
+        autoHint.isEnabled = false
+        menu.addItem(autoHint)
         menu.addItem(.separator())
 
         // Custom Setup.
@@ -150,23 +174,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func monitorMenuItem() -> NSMenuItem {
         let current = NSScreen.screen(withID: activeDisplayID)
-        let title = "Snap on monitor:  \(current?.uniqueDisplayName ?? "Any")"
-        let header = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        let header = NSMenuItem(title: "Snap on monitor:  \(current?.uniqueDisplayName ?? "Any")",
+                                action: nil, keyEquivalent: "")
+        header.submenu = monitorSubmenu(noneTitle: "Any monitor", selected: activeDisplayID,
+                                        action: #selector(chooseMonitor(_:)))
+        return header
+    }
+
+    private func autoArrangeMenuItem() -> NSMenuItem {
+        let current = NSScreen.screen(withID: autoArrangeDisplayID)
+        let header = NSMenuItem(title: "Auto-arrange windows on:  \(current?.uniqueDisplayName ?? "Off")",
+                                action: nil, keyEquivalent: "")
+        header.submenu = monitorSubmenu(noneTitle: "Off", selected: autoArrangeDisplayID,
+                                        action: #selector(chooseAutoArrangeMonitor(_:)))
+        return header
+    }
+
+    /// A monitor picker: an "everything off" entry, then every attached screen. Shared by the
+    /// drag-snap and auto-arrange pickers so they stay labelled the same way.
+    private func monitorSubmenu(noneTitle: String, selected: CGDirectDisplayID?,
+                                action: Selector) -> NSMenu {
         let submenu = NSMenu()
-        let any = NSMenuItem(title: "Any monitor", action: #selector(chooseMonitor(_:)), keyEquivalent: "")
-        any.target = self
-        any.state = (activeDisplayID == nil) ? .on : .off
-        submenu.addItem(any)
+        let none = NSMenuItem(title: noneTitle, action: action, keyEquivalent: "")
+        none.target = self
+        none.state = (selected == nil) ? .on : .off
+        submenu.addItem(none)
         submenu.addItem(.separator())
         for (i, s) in NSScreen.screens.enumerated() {
-            let item = NSMenuItem(title: s.label(index: i), action: #selector(chooseMonitor(_:)), keyEquivalent: "")
+            let item = NSMenuItem(title: s.label(index: i), action: action, keyEquivalent: "")
             item.target = self
             item.representedObject = s.displayID.map { NSNumber(value: $0) }
-            item.state = (s.displayID == activeDisplayID) ? .on : .off
+            item.state = (s.displayID == selected) ? .on : .off
             submenu.addItem(item)
         }
-        header.submenu = submenu
-        return header
+        return submenu
     }
 
     // MARK: - Snap actions
@@ -219,6 +260,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             rebuildMenu()
         }
     }
+
+    // MARK: - Auto-arrange
+
+    @objc private func chooseAutoArrangeMonitor(_ sender: NSMenuItem) {
+        setAutoArrange(displayID: (sender.representedObject as? NSNumber)?.uint32Value)
+    }
+
+    /// ⌃⌥⌘A: flip auto-arrange on for whichever screen the mouse is on, and off again if it
+    /// was already watching that screen. The one-keystroke version of the menu picker.
+    private func toggleAutoArrangeUnderMouse() {
+        let id = Geometry.screenUnderMouse.displayID
+        setAutoArrange(displayID: autoArrangeDisplayID == id ? nil : id)
+    }
+
+    /// Keep `displayID` tiled (or stop, when nil).
+    private func setAutoArrange(displayID: CGDirectDisplayID?) {
+        autoArrangeDisplayID = displayID
+        defaults.set(displayID.map { Int($0) }, forKey: "autoArrangeDisplayID")
+        if let displayID {
+            autoArrange.start(on: displayID)
+        } else {
+            autoArrange.stop()
+        }
+        rebuildMenu()
+    }
+
+    // MARK: - Arming drag-snap
 
     /// Turn drag-to-snap on for `layout` on `displayID` (or off when layout is nil).
     private func armDragSnap(_ layout: Layout?, displayID: CGDirectDisplayID?, persist: Bool) {
@@ -287,6 +355,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotkeys.bind(keyCode: HotkeyManager.arrowLeft,  action: snap("Halves", "Left"))
         hotkeys.bind(keyCode: HotkeyManager.arrowRight, action: snap("Halves", "Right"))
         hotkeys.bind(keyCode: HotkeyManager.arrowUp,    action: snap("Maximize", "Full"))
+        hotkeys.bind(keyCode: HotkeyManager.letterA) { [weak self] in
+            self?.toggleAutoArrangeUnderMouse()
+        }
         hotkeys.start()
     }
 

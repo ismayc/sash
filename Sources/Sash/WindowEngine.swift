@@ -18,6 +18,15 @@ enum WindowEngine {
         return copyElement(app, kAXFocusedWindowAttribute)
     }
 
+    /// How long to let a window settle before trusting what it reports back.
+    ///
+    /// Setting a frame is not synchronous: an app processes the change on its own run loop and
+    /// only then reports its new geometry. Electron-based editors are the worst offenders —
+    /// read `kAXSize` straight after writing it and you get a mid-flight value, which is
+    /// exactly how "it refused the size" gets mistaken for the truth. Everything that inspects
+    /// the result of a move has to wait first.
+    static let settleDelay: TimeInterval = 0.35
+
     /// Move + resize a window to an AppKit global rect. Order matters: some apps clamp the
     /// size against the *old* position, so we set position, then size, then position again.
     static func setFrame(_ window: AXUIElement, appKitRect: CGRect) {
@@ -27,9 +36,22 @@ enum WindowEngine {
         setPosition(window, CGPoint(x: cg.origin.x, y: cg.origin.y))
     }
 
+    /// Once the window has settled, slide it back inside `bounds` if it is overhanging — an app
+    /// that genuinely won't shrink to its zone should at least stay somewhere you can grab it.
+    static func keepOnScreenAfterSettling(_ window: AXUIElement, within bounds: CGRect) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + settleDelay) {
+            guard let actual = WindowInfo.frame(of: window) else { return }
+            let corrected = GeometryMath.containing(actual, within: bounds)
+            guard corrected.origin != actual.origin else { return }
+            let cg = Geometry.appKitToCG(corrected)
+            setPosition(window, CGPoint(x: cg.origin.x, y: cg.origin.y))
+        }
+    }
+
     /// Snap a specific window into `zone` on a given screen.
     static func snap(_ window: ManagedWindow, to zone: Zone, on screen: NSScreen) {
         setFrame(window.element, appKitRect: zone.appKitRect(on: screen))
+        keepOnScreenAfterSettling(window.element, within: screen.visibleFrame)
     }
 
     /// Snap the currently focused window into `zone` on the screen under the mouse.
@@ -37,6 +59,7 @@ enum WindowEngine {
     static func snapFocused(to zone: Zone, on screen: NSScreen = Geometry.screenUnderMouse) -> Bool {
         guard let win = focusedWindow() else { return false }
         setFrame(win, appKitRect: zone.appKitRect(on: screen))
+        keepOnScreenAfterSettling(win, within: screen.visibleFrame)
         return true
     }
 

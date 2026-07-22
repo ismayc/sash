@@ -78,6 +78,12 @@ enum WindowInfo {
         return true
     }
 
+    /// A window's current frame in AppKit global coordinates — used to check what a window
+    /// actually accepted after we asked it to move.
+    static func frame(of win: AXUIElement) -> CGRect? {
+        axFrame(win).map(cgToAppKit)
+    }
+
     /// A window's frame in CoreGraphics/AX coordinates (top-left origin).
     private static func axFrame(_ win: AXUIElement) -> CGRect? {
         var posRef: CFTypeRef?
