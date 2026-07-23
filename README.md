@@ -33,6 +33,11 @@ brew install --cask macsyzones
 Sash remains a smaller, from-scratch take that I maintain for my own workflow. Big thanks to
 Meowing Cat for the excellent prior art. 🐈
 
+One place Sash now goes beyond it: **[auto-arrange](#auto-arrange-let-sash-decide)** — a
+single toggle that keeps a whole screen tiled as windows open and close. As of MacsyZones
+v3.0.4 (May 2026), snapping there is per-window and user-initiated (drag-to-snap, Layout
+Switcher, Quick Snapper); nothing keeps a screen continuously tiled on its own.
+
 ## Features
 
 - **Drag-to-snap** — arm a layout, then drag any window; zones light up and it snaps into place.
@@ -40,7 +45,8 @@ Meowing Cat for the excellent prior art. 🐈
 - **Keyboard shortcuts** — send the focused window to a zone with a hotkey.
 - **Menu-bar picker** — pick a zone from the menu.
 - **Auto-arrange** — one toggle per screen: Sash works out the best tiling for whatever
-  windows are there and keeps it that way as windows open and close.
+  windows are there and keeps it that way as windows open and close. The feature that sets
+  Sash apart from other zone snappers.
 - **Per-monitor** — arm snapping on one display and leave your other monitors free.
 - **Esc to cancel** a snap mid-drag.
 - **Hold-⇧ mode** — optionally require holding Shift to snap, so casual drags are untouched.
