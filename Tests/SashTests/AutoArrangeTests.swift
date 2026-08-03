@@ -118,6 +118,77 @@ func runAutoArrangeTests() {
 
     T.test("plan with no windows is empty") {
         T.expect(AutoArrange.plan(count: 0, aspectRatio: laptop, savedLayouts: []).isEmpty)
+        T.expect(AutoArrange.plan(count: 0, aspectRatio: laptop, choice: .grid,
+                                  savedLayouts: [], pickable: []).isEmpty)
+    }
+
+    // MARK: - Per-count choice
+
+    // A custom asymmetric three-way split and a plain three-column built-in: the two things the
+    // picker exists to choose between.
+    let mine = Layout(name: "2 Wide, 1 Tall", zones: [
+        Zone(name: "Top",    x: 0,    y: 0,   w: 0.58, h: 0.5),
+        Zone(name: "Right",  x: 0.58, y: 0,   w: 0.42, h: 1),
+        Zone(name: "Bottom", x: 0,    y: 0.5, w: 0.58, h: 0.5),
+    ])
+    let thirds = Layout(name: "Thirds", zones: Layout.grid(cols: 3, rows: 1))
+
+    T.test("candidates offers every tileable layout of exactly the right size") {
+        let overlapping = Layout(name: "Stacked", zones: [
+            Zone(name: "A", x: 0, y: 0, w: 1, h: 1),
+            Zone(name: "B", x: 0, y: 0, w: 1, h: 1),
+            Zone(name: "C", x: 0, y: 0, w: 1, h: 1),
+        ])
+        let quarters = Layout(name: "Quarters", zones: Layout.grid(cols: 2, rows: 2))
+        let pool = [mine, thirds, overlapping, quarters]
+        T.expect(AutoArrange.candidates(count: 3, from: pool).map(\.name) == ["2 Wide, 1 Tall", "Thirds"])
+        T.expect(AutoArrange.candidates(count: 4, from: pool).map(\.name) == ["Quarters"])
+        T.expect(AutoArrange.candidates(count: 5, from: pool).isEmpty)
+    }
+
+    T.test("an explicit choice beats the saved layout that would otherwise win") {
+        // Automatic keeps the old behaviour: the user's own layout pre-empts the grid.
+        T.expect(AutoArrange.plan(count: 3, aspectRatio: ultrawide, choice: .automatic,
+                                  savedLayouts: [mine], pickable: [thirds, mine]) == mine.zones)
+        // Naming a built-in reaches past the saved layout — the whole point of the picker.
+        T.expect(AutoArrange.plan(count: 3, aspectRatio: ultrawide, choice: .named("Thirds"),
+                                  savedLayouts: [mine], pickable: [thirds, mine]) == thirds.zones)
+        // And the grid can be forced even though a saved layout fits.
+        let forced = AutoArrange.plan(count: 3, aspectRatio: ultrawide, choice: .grid,
+                                      savedLayouts: [mine], pickable: [thirds, mine])
+        T.expect(forced.map(\.x) == AutoArrange.zones(count: 3, aspectRatio: ultrawide).map(\.x))
+    }
+
+    T.test("a choice naming a layout that is gone falls back to automatic") {
+        // Deleted, renamed, or edited to a different number of zones — all the same to us.
+        T.expect(AutoArrange.plan(count: 3, aspectRatio: ultrawide, choice: .named("Deleted"),
+                                  savedLayouts: [mine], pickable: [mine]) == mine.zones)
+        let noSaved = AutoArrange.plan(count: 3, aspectRatio: ultrawide, choice: .named("Deleted"),
+                                       savedLayouts: [], pickable: [])
+        T.expect(noSaved.map(\.x) == AutoArrange.zones(count: 3, aspectRatio: ultrawide).map(\.x))
+    }
+
+    T.test("resolvedLayout names what is really in force, so a menu can tick it") {
+        T.expect(AutoArrange.resolvedLayout(count: 3, choice: .automatic,
+                                            savedLayouts: [mine], pickable: [thirds, mine])?.name == "2 Wide, 1 Tall")
+        T.expect(AutoArrange.resolvedLayout(count: 3, choice: .named("Thirds"),
+                                            savedLayouts: [mine], pickable: [thirds, mine])?.name == "Thirds")
+        T.expect(AutoArrange.resolvedLayout(count: 3, choice: .grid,
+                                            savedLayouts: [mine], pickable: [thirds, mine]) == nil)
+        // Nothing saved for this count: the grid is in force even under .automatic.
+        T.expect(AutoArrange.resolvedLayout(count: 4, choice: .automatic,
+                                            savedLayouts: [mine], pickable: [thirds, mine]) == nil)
+    }
+
+    T.test("a choice survives a round-trip through its stored string") {
+        for choice in [AutoArrangeChoice.automatic, .grid, .named("2 Wide, 1 Tall")] {
+            T.expect(AutoArrangeChoice(rawValue: choice.rawValue) == choice, "\(choice) round-trip")
+        }
+        // A layout named like one of the fixed cases still round-trips.
+        T.expect(AutoArrangeChoice(rawValue: AutoArrangeChoice.named("grid").rawValue) == .named("grid"))
+        // Anything unrecognised degrades to the default rather than failing.
+        T.expect(AutoArrangeChoice(rawValue: "nonsense") == .automatic)
+        T.expect(AutoArrangeChoice(rawValue: "") == .automatic)
     }
 
     T.test("assign keeps windows on the side they are already on") {

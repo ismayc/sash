@@ -15,11 +15,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // Auto-arrange state (persisted in UserDefaults).
     private var autoArrangeDisplayID: CGDirectDisplayID?
+    private var autoArrangeChoices: [Int: AutoArrangeChoice] = [:]
+
+    /// Window counts that get their own layout picker in the menu. Three and four are where
+    /// taste actually differs — an asymmetric custom split one day, plain thirds or quarters
+    /// the next — so those are the counts worth a standing choice.
+    private static let choosableCounts = [3, 4]
+
+    /// Menu title for "ignore saved layouts, just tile evenly".
+    private static let evenGridTitle = "Even grid"
+
+    private static func autoArrangeChoiceKey(_ count: Int) -> String {
+        "autoArrangeChoice.\(count)"
+    }
+
+    /// What a picker entry means, carried on the menu item.
+    private struct AutoArrangePick {
+        let count: Int
+        let choice: AutoArrangeChoice
+    }
 
     private lazy var autoArrange: AutoArrangeController = {
         let controller = AutoArrangeController()
         controller.onScreenLost = { [weak self] in
             self?.setAutoArrange(displayID: nil)
+        }
+        controller.choiceForCount = { [weak self] count in
+            self?.autoArrangeChoices[count] ?? .automatic
         }
         return controller
     }()
@@ -35,6 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         loadHoldPreference()
+        loadAutoArrangeChoices()
         if defaults.object(forKey: "activeDisplayID") != nil {
             activeDisplayID = CGDirectDisplayID(defaults.integer(forKey: "activeDisplayID"))
         }
@@ -105,6 +128,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // --- Auto-arrange ---
         menu.addItem(autoArrangeMenuItem())
+        for count in Self.choosableCounts {
+            menu.addItem(autoArrangeChoiceMenuItem(count: count))
+        }
         let autoHint = NSMenuItem(title: "Tip: ⌃⌥⌘A toggles it on the screen under the mouse",
                                   action: nil, keyEquivalent: "")
         autoHint.isEnabled = false
@@ -190,6 +216,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return header
     }
 
+    /// A picker for how auto-arrange should tile exactly `count` windows: the even grid, then
+    /// every layout — built-in or custom — that has that many non-overlapping zones.
+    ///
+    /// The tick sits on whatever is *actually* in force, which before anything is picked is
+    /// whatever auto-arrange would have chosen on its own. So the menu always reads as the truth
+    /// rather than as an empty preference.
+    private func autoArrangeChoiceMenuItem(count: Int) -> NSMenuItem {
+        let store = LayoutStore.shared
+        let choice = autoArrangeChoices[count] ?? .automatic
+        let inForce = AutoArrange.resolvedLayout(count: count, choice: choice,
+                                                 savedLayouts: store.custom, pickable: store.all)
+
+        let header = NSMenuItem(title: "When \(count) windows:  \(inForce?.name ?? Self.evenGridTitle)",
+                                action: nil, keyEquivalent: "")
+        let submenu = NSMenu()
+
+        let grid = NSMenuItem(title: Self.evenGridTitle,
+                              action: #selector(chooseAutoArrangeLayout(_:)), keyEquivalent: "")
+        grid.target = self
+        grid.representedObject = AutoArrangePick(count: count, choice: .grid)
+        grid.state = (inForce == nil) ? .on : .off
+        submenu.addItem(grid)
+        submenu.addItem(.separator())
+
+        for layout in AutoArrange.candidates(count: count, from: store.all) {
+            let item = NSMenuItem(title: layout.name,
+                                  action: #selector(chooseAutoArrangeLayout(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = AutoArrangePick(count: count, choice: .named(layout.name))
+            item.state = (inForce?.name == layout.name) ? .on : .off
+            submenu.addItem(item)
+        }
+
+        header.submenu = submenu
+        return header
+    }
+
     /// A monitor picker: an "everything off" entry, then every attached screen. Shared by the
     /// drag-snap and auto-arrange pickers so they stay labelled the same way.
     private func monitorSubmenu(noneTitle: String, selected: CGDirectDisplayID?,
@@ -265,6 +328,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func chooseAutoArrangeMonitor(_ sender: NSMenuItem) {
         setAutoArrange(displayID: (sender.representedObject as? NSNumber)?.uint32Value)
+    }
+
+    /// Pin how a given window count gets tiled, and re-tile straight away so the pick is visible
+    /// without waiting for a window to open or close.
+    @objc private func chooseAutoArrangeLayout(_ sender: NSMenuItem) {
+        guard let pick = sender.representedObject as? AutoArrangePick else { return }
+        autoArrangeChoices[pick.count] = pick.choice
+        defaults.set(pick.choice.rawValue, forKey: Self.autoArrangeChoiceKey(pick.count))
+        if autoArrange.isRunning { autoArrange.arrangeNow() }
+        rebuildMenu()
+    }
+
+    private func loadAutoArrangeChoices() {
+        for count in Self.choosableCounts {
+            guard let raw = defaults.string(forKey: Self.autoArrangeChoiceKey(count)) else { continue }
+            autoArrangeChoices[count] = AutoArrangeChoice(rawValue: raw)
+        }
     }
 
     /// ⌃⌥⌘A: flip auto-arrange on for whichever screen the mouse is on, and off again if it

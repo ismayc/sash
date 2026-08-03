@@ -19,6 +19,10 @@ final class AutoArrangeController {
     /// so the menu can drop its checkmark.
     var onScreenLost: (() -> Void)?
 
+    /// Which arrangement to use for a given number of windows on the screen. Supplied by the app
+    /// so the menu's per-count picks are honoured; unset means the automatic behaviour.
+    var choiceForCount: (Int) -> AutoArrangeChoice = { _ in .automatic }
+
     /// The display being kept tiled, or nil when the toggle is off.
     private(set) var displayID: CGDirectDisplayID?
 
@@ -98,10 +102,13 @@ final class AutoArrangeController {
 
         let visible = screen.visibleFrame
         // Only the user's *own* layouts get to pre-empt the computed grid — the built-ins are
-        // starting points, not a statement that three windows should always be thirds.
+        // starting points, not a statement that three windows should always be thirds. They do
+        // become pickable once the menu names one for this count.
         let zones = AutoArrange.plan(count: windows.count,
                                      aspectRatio: visible.width / visible.height,
-                                     savedLayouts: LayoutStore.shared.custom)
+                                     choice: choiceForCount(windows.count),
+                                     savedLayouts: LayoutStore.shared.custom,
+                                     pickable: LayoutStore.shared.all)
         let rects = zones.map { $0.rect(inVisibleFrame: visible) }
         let pairs = AutoArrange.assign(windows: windows.map(\.appKitFrame), zones: rects)
         for pair in pairs {

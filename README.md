@@ -46,7 +46,8 @@ Switcher, Quick Snapper); nothing keeps a screen continuously tiled on its own.
 - **Menu-bar picker** — pick a zone from the menu.
 - **Auto-arrange** — one toggle per screen: Sash works out the best tiling for whatever
   windows are there and keeps it that way as windows open and close. The feature that sets
-  Sash apart from other zone snappers.
+  Sash apart from other zone snappers. Three- and four-window arrangements get a standing
+  choice, so you can pin your own split or plain thirds/quarters.
 - **Per-monitor** — arm snapping on one display and leave your other monitors free.
 - **Esc to cancel** a snap mid-drag.
 - **Hold-⇧ mode** — optionally require holding Shift to snap, so casual drags are untouched.
@@ -85,6 +86,21 @@ Where one of **your own** custom layouts has exactly as many zones as there are 
 uses that instead of the computed grid — so a layout you designed wins over a guess. (Layouts
 with overlapping zones are skipped: overlaps are for cycling between windows by hand, not for
 tiling.) The built-in layouts don't pre-empt the grid.
+
+### Choosing the layout for 3 and 4 windows
+
+Three and four windows are where taste actually differs — an asymmetric split you drew yourself
+one day, plain thirds or quarters the next. So those two counts get a standing choice of their
+own:
+
+Menu bar ▸ **When 3 windows:** ▸ and **When 4 windows:** ▸ — each lists **Even grid** plus every
+layout, built-in or custom, that has exactly that many non-overlapping zones. Pick one and Sash
+re-tiles immediately; the pick sticks across restarts and applies only to that window count.
+
+The tick sits on whatever is really in force, so before you pick anything it already shows what
+auto-arrange would have done on its own. Naming a built-in here is the one way a built-in
+pre-empts the grid. If you later delete or reshape the layout you picked, that count quietly
+reverts to the automatic behaviour.
 
 Two things it deliberately does **not** do: it won't undo a window you resize by hand (only
 opening or closing a window re-tiles), and it won't move anything while a mouse button is
