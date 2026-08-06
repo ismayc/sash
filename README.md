@@ -48,7 +48,9 @@ Switcher, Quick Snapper); nothing keeps a screen continuously tiled on its own.
   windows are there and keeps it that way as windows open and close. The feature that sets
   Sash apart from other zone snappers. Three- and four-window arrangements get a standing
   choice, so you can pin your own split or plain thirds/quarters.
-- **Per-monitor** — arm snapping on one display and leave your other monitors free.
+- **Per-monitor** — arm snapping on one display and leave your other monitors free. Displays
+  are picked up as you plug them in, and a monitor you've switched something on for is
+  remembered while it's asleep or unplugged.
 - **Esc to cancel** a snap mid-drag.
 - **Hold-⇧ mode** — optionally require holding Shift to snap, so casual drags are untouched.
 - **Launch at Login**, and a stable **app icon**.
@@ -62,6 +64,20 @@ Switcher, Quick Snapper); nothing keeps a screen continuously tiled on its own.
    highlights. **Release** to snap it in. Press **Esc** mid-drag to cancel.
 
 Repeat for each window — drag them one by one into position.
+
+## Monitors
+
+Both monitor pickers — **Snap on monitor:** and **Auto-arrange windows on:** — list every
+attached display, and the list is rebuilt each time you open the menu. Plug a monitor in, wake
+it, or change its resolution and it's there; no restart.
+
+If a display still isn't listed, **Refresh monitors** at the bottom of either picker forces a
+re-scan.
+
+A monitor you've switched something on for is **remembered while it's away**. Unplug it, or let
+it sleep, and auto-arrange pauses rather than switching itself off — the menu reads
+`LG ULTRAWIDE — waiting, not connected` — then resumes on its own when the display is back.
+Your choice survives the cable, in other words; only picking **Off** clears it.
 
 ## Auto-arrange (let Sash decide)
 
@@ -194,7 +210,7 @@ and is verified manually rather than unit-tested.
 
 | Target | What |
 |---|---|
-| `SashKit` | Pure, testable logic: `Zone`/`Layout` geometry, coordinate math, auto-arrange tiling, layout persistence. No AppKit runtime deps. |
+| `SashKit` | Pure, testable logic: `Zone`/`Layout` geometry, coordinate math, auto-arrange tiling, display targeting, layout persistence. No AppKit runtime deps. |
 | `Sash` | The menu-bar app: window engine (Accessibility API), drag-snap overlay, auto-arrange watcher, hotkeys, the Custom Setup window. |
 | `SashTests` | Dependency-free test runner (runs via `swift run`). |
 

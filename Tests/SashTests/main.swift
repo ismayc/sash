@@ -7,6 +7,7 @@ runLayoutTests()
 runGeometryMathTests()
 runLayoutStoreTests()
 runDisplayNamingTests()
+runDisplayTargetTests()
 runAutoArrangeTests()
 runZoneReflowTests()
 

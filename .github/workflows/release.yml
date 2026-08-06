@@ -19,8 +19,18 @@ jobs:
       - name: Build DMG
         run: ./scripts/make_dmg.sh release
 
-      - name: Name the DMG with the version
-        run: mv build/Sash.dmg "build/Sash-${GITHUB_REF_NAME}.dmg"
+      # make_dmg.sh names the image from the version inside the bundle, so the tag and the
+      # bundle have to agree or the release would ship a build labelled something else.
+      - name: Check the tag matches the version in the bundle
+        run: |
+          VERSION="$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" \
+            build/Sash.app/Contents/Info.plist)"
+          if [ "v$VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match bundle version $VERSION." >&2
+            echo "Update CFBundleShortVersionString in scripts/Info.plist, or retag." >&2
+            exit 1
+          fi
+          echo "DMG=build/Sash-$VERSION.dmg" >> "$GITHUB_ENV"
 
       - name: Write release notes
         run: |
@@ -43,6 +53,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" \
-            "build/Sash-${GITHUB_REF_NAME}.dmg" \
+            "$DMG" \
             --title "Sash $GITHUB_REF_NAME" \
             --notes-file release-notes.md

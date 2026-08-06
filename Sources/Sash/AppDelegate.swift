@@ -14,7 +14,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var requireShiftHeld = false
 
     // Auto-arrange state (persisted in UserDefaults).
+    /// The screen the user *asked* to keep tiled. Deliberately not cleared when that screen goes
+    /// away — a monitor asleep or unplugged pauses auto-arrange, and it resumes by itself once
+    /// the screen is back. What is actually running is `autoArrange.displayID`.
     private var autoArrangeDisplayID: CGDirectDisplayID?
+    /// The chosen screen's name, kept so the menu can still say which display it is waiting for
+    /// after that display has stopped reporting one.
+    private var autoArrangeDisplayName: String?
     private var autoArrangeChoices: [Int: AutoArrangeChoice] = [:]
 
     /// Window counts that get their own layout picker in the menu. Three and four are where
@@ -37,8 +43,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private lazy var autoArrange: AutoArrangeController = {
         let controller = AutoArrangeController()
+        // The controller has already stopped itself; keep the preference so the screen coming
+        // back switches auto-arrange on again, and just let the menu redraw as paused.
         controller.onScreenLost = { [weak self] in
-            self?.setAutoArrange(displayID: nil)
+            self?.rebuildMenu()
         }
         controller.choiceForCount = { [weak self] count in
             self?.autoArrangeChoices[count] ?? .automatic
@@ -69,6 +77,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             name: NSApplication.didBecomeActiveNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(rebuildMenu),
             name: LayoutStore.didChange, object: nil)
+        // Displays attached, removed, woken, or re-arranged. Without this the monitor pickers
+        // keep whatever was plugged in at launch.
+        NotificationCenter.default.addObserver(self, selector: #selector(refreshMonitors),
+            name: NSApplication.didChangeScreenParametersNotification, object: nil)
 
         setupStaticHotkeys()
 
@@ -78,9 +90,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             armDragSnap(layout, displayID: activeDisplayID, persist: false)
         }
 
-        // Restore auto-arrange if it was left on for a screen that is still attached.
+        // Restore auto-arrange. It starts only if that screen is attached right now, and waits
+        // for it otherwise rather than dropping the preference.
         if defaults.object(forKey: "autoArrangeDisplayID") != nil {
-            setAutoArrange(displayID: CGDirectDisplayID(defaults.integer(forKey: "autoArrangeDisplayID")))
+            autoArrangeDisplayID = CGDirectDisplayID(defaults.integer(forKey: "autoArrangeDisplayID"))
+            autoArrangeDisplayName = defaults.string(forKey: "autoArrangeDisplayName")
+            reconcileAutoArrange()
+            rebuildMenu()
         }
     }
 
@@ -92,11 +108,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             button.image = NSImage(systemSymbolName: "square.grid.2x2",
                                    accessibilityDescription: "Sash")
         }
+        // One menu object for the app's lifetime, refilled on demand — see `menuNeedsUpdate`.
+        let menu = NSMenu()
+        menu.delegate = self
+        statusItem.menu = menu
         rebuildMenu()
     }
 
     @objc private func rebuildMenu() {
-        let menu = NSMenu()
+        guard let menu = statusItem?.menu else { return }
+        populate(menu)
+    }
+
+    private func populate(_ menu: NSMenu) {
+        menu.removeAllItems()
 
         // Permission status.
         if Accessibility.isTrusted {
@@ -174,8 +199,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let quit = NSMenuItem(title: "Quit Sash", action: #selector(quit), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
-
-        statusItem.menu = menu
     }
 
     private func dragLayoutMenuItem() -> NSMenuItem {
@@ -208,12 +231,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func autoArrangeMenuItem() -> NSMenuItem {
-        let current = NSScreen.screen(withID: autoArrangeDisplayID)
-        let header = NSMenuItem(title: "Auto-arrange windows on:  \(current?.uniqueDisplayName ?? "Off")",
+        let header = NSMenuItem(title: "Auto-arrange windows on:  \(autoArrangeStatus)",
                                 action: nil, keyEquivalent: "")
         header.submenu = monitorSubmenu(noneTitle: "Off", selected: autoArrangeDisplayID,
                                         action: #selector(chooseAutoArrangeMonitor(_:)))
         return header
+    }
+
+    /// What the auto-arrange header reads. A chosen-but-absent screen says so by name instead of
+    /// reading "Off", because the preference is paused, not cancelled — "Off" would be a lie that
+    /// invites you to switch it on again.
+    private var autoArrangeStatus: String {
+        guard let desired = autoArrangeDisplayID else { return "Off" }
+        if let screen = NSScreen.screen(withID: desired) { return screen.uniqueDisplayName }
+        return "\(autoArrangeDisplayName ?? "Chosen display") — waiting, not connected"
     }
 
     /// A picker for how auto-arrange should tile exactly `count` windows: the even grid, then
@@ -270,6 +301,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             item.state = (s.displayID == selected) ? .on : .off
             submenu.addItem(item)
         }
+        // A manual re-scan, sitting where you look when the monitor you expected isn't listed.
+        submenu.addItem(.separator())
+        let refresh = NSMenuItem(title: "Refresh monitors", action: #selector(refreshMonitors),
+                                 keyEquivalent: "")
+        refresh.target = self
+        submenu.addItem(refresh)
         return submenu
     }
 
@@ -354,14 +391,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setAutoArrange(displayID: autoArrangeDisplayID == id ? nil : id)
     }
 
-    /// Keep `displayID` tiled (or stop, when nil).
+    /// Keep `displayID` tiled (or stop, when nil). This records the user's *choice*; whether it
+    /// is running right now follows from that screen being attached.
     private func setAutoArrange(displayID: CGDirectDisplayID?) {
         autoArrangeDisplayID = displayID
+        autoArrangeDisplayName = NSScreen.screen(withID: displayID)?.uniqueDisplayName
         defaults.set(displayID.map { Int($0) }, forKey: "autoArrangeDisplayID")
-        if let displayID {
-            autoArrange.start(on: displayID)
+        defaults.set(autoArrangeDisplayName, forKey: "autoArrangeDisplayName")
+        reconcileAutoArrange()
+        rebuildMenu()
+    }
+
+    /// Start or stop auto-arrange so it is running exactly when the screen it was switched on for
+    /// is attached. Returns whether that changed anything, so callers can tell a resume from a
+    /// screen that was already being watched.
+    @discardableResult
+    private func reconcileAutoArrange() -> Bool {
+        let attached = NSScreen.screens.compactMap(\.displayID)
+        let target = DisplayTarget.active(desired: autoArrangeDisplayID, attached: attached)
+        guard target != autoArrange.displayID else { return false }
+        if let target {
+            autoArrange.start(on: target)
         } else {
             autoArrange.stop()
+        }
+        return true
+    }
+
+    /// Re-scan the attached displays: repopulate the monitor pickers, resume auto-arrange on a
+    /// screen that has come back, and drop it on one that has gone. Runs both from the menu item
+    /// and from `didChangeScreenParametersNotification`.
+    @objc private func refreshMonitors() {
+        // Already watching the same screen, so nothing started or stopped — but this fires on
+        // resolution and arrangement changes too, and the tiles are sized for the old geometry.
+        // The window *set* is unchanged, so the watcher would never re-tile on its own.
+        if !reconcileAutoArrange(), autoArrange.isRunning {
+            autoArrange.arrangeNow()
         }
         rebuildMenu()
     }
@@ -454,5 +519,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }))
         }
         hotkeys.setDynamic(bindings)
+    }
+}
+
+extension AppDelegate: NSMenuDelegate {
+    /// Refill the menu every time it is opened. A menu-bar agent has no Dock icon and is never
+    /// really "activated", so the notifications that would otherwise prompt a rebuild are not
+    /// dependable — the only list guaranteed not to be stale is one built as it is shown.
+    ///
+    /// Deliberately does not re-tile: opening a menu to look at it should never move windows.
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        reconcileAutoArrange()
+        populate(menu)
     }
 }
