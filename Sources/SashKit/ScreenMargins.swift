@@ -5,12 +5,12 @@ import CoreGraphics
 ///
 /// The Dock and the menu bar reserve their space through `visibleFrame`, so Sash never covers
 /// them without being told. Desktop widgets, wallpaper clocks and always-visible HUDs reserve
-/// nothing — `visibleFrame` runs straight underneath them — so the only way to stop a tile
+/// nothing (`visibleFrame` runs straight underneath them), so the only way to stop a tile
 /// landing on top of one is to say where it is. Points rather than fractions of the screen,
 /// because what's being protected is a fixed-size thing sitting on the desktop: it stays the
 /// same size when the resolution changes, and a fraction wouldn't.
 ///
-/// Pure — no AppKit — so the clamping rule is testable without a window server.
+/// Pure, with no AppKit, so the clamping rule is testable without a window server.
 public struct ScreenMargins: Codable, Hashable {
     public var top: CGFloat
     public var bottom: CGFloat
@@ -42,7 +42,7 @@ public struct ScreenMargins: Codable, Hashable {
     public enum Edge: String, Codable, CaseIterable {
         case top, bottom, left, right
 
-        /// The edge across from this one — the one it has to share the screen's length with.
+        /// The edge across from this one: the one it shares the screen's length with.
         public var opposite: Edge {
             switch self {
             case .top: return .bottom
@@ -84,7 +84,7 @@ public struct ScreenMargins: Codable, Hashable {
         let length = edge.isVertical ? frame.height : frame.width
         let budget = max(length * (1 - Self.minUsableFraction) - value(for: edge.opposite), 0)
         let clamped = min(max(points, 0), budget)
-        // A sub-point drag means "nothing", not "a sliver" — see minimumMeaningful.
+        // A sub-point drag means "nothing", not "a sliver". See minimumMeaningful.
         let snapped = clamped < Self.minimumMeaningful ? 0 : clamped
         var copy = self
         switch edge {
@@ -110,7 +110,7 @@ public struct ScreenMargins: Codable, Hashable {
 
     /// Scale a pair of opposing margins down together until they leave `minUsableFraction` of
     /// the length behind. Proportional rather than first-come, so a rect that has been reserved
-    /// past the limit keeps the *balance* the user asked for instead of favouring one side.
+    /// past the limit keeps the *balance* the user asked for instead of favoring one side.
     private static func fit(_ a: CGFloat, _ b: CGFloat,
                             within length: CGFloat) -> (CGFloat, CGFloat) {
         let lo = max(a, 0), hi = max(b, 0)
@@ -128,7 +128,7 @@ extension ScreenMargins {
     /// Keyed by name, not by `CGDirectDisplayID`: ids are handed out afresh by the window server
     /// and a monitor that sleeps, gets unplugged, or comes back through a KVM can return under a
     /// different one. The strip you protected is a physical fact about that monitor, so it has to
-    /// survive that — the same reasoning that has auto-arrange remember a display by name.
+    /// survive that, the same reasoning that has auto-arrange remember a display by name.
     public static func decodeBook(_ data: Data?) -> [String: ScreenMargins] {
         guard let data,
               let book = try? JSONDecoder().decode([String: ScreenMargins].self, from: data)
@@ -138,7 +138,7 @@ extension ScreenMargins {
 
     /// Encode a book for storage, dropping displays with nothing kept clear so the setting
     /// doesn't accumulate an entry for every monitor ever plugged in. Nil means "don't write
-    /// anything" — a caller keeps whatever is already stored rather than replacing a good
+    /// anything": a caller keeps whatever is already stored rather than replacing a good
     /// setting with an empty one.
     public static func encodeBook(_ book: [String: ScreenMargins]) -> Data? {
         let encoder = JSONEncoder()

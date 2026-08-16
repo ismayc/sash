@@ -18,7 +18,7 @@ public enum DisplayNaming {
     }
 
     /// Names for every attached display, in order, with duplicates suffixed "(1)", "(2)"…
-    /// Names that appear only once are left alone — a lone monitor stays "LG ULTRAWIDE" rather
+    /// Names that appear only once are left alone: a lone monitor stays "LG ULTRAWIDE" rather
     /// than becoming "LG ULTRAWIDE (1)".
     public static func uniqueNames(reported: [String]) -> [String] {
         let base = reported.enumerated().map { name(reported: $1, index: $0) }
@@ -28,7 +28,7 @@ public enum DisplayNaming {
 
         var seen: [String: Int] = [:]
         return base.map { name in
-            // `totals` was built from `base`, so the lookup always succeeds — a `default:` here
+            // `totals` was built from `base`, so the lookup always succeeds. A `default:` here
             // would be unreachable, and the coverage floor is 100%.
             guard let total = totals[name], total > 1 else { return name }
             let n = (seen[name] ?? 0) + 1

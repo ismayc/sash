@@ -1,6 +1,6 @@
 #!/bin/bash
 # Build Sash.app and package it into a distributable, compressed .dmg with a drag-to-install
-# "Applications" shortcut. Output: build/Sash-<version>.dmg, e.g. build/Sash-0.3.0.dmg —
+# "Applications" shortcut. Output: build/Sash-<version>.dmg, e.g. build/Sash-0.3.0.dmg, with
 # the version is read back out of the app that was just built, so the filename can never
 # disagree with what is inside it.
 #

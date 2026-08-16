@@ -9,7 +9,7 @@ import CoreGraphics
 ///  - Accessibility / CoreGraphics: origin top-left, +y down, (0,0) at the primary screen's
 ///    top-left.
 ///
-/// `primaryHeight` is the primary screen's height — the pivot used to flip between them.
+/// `primaryHeight` is the primary screen's height, the pivot used to flip between them.
 public enum GeometryMath {
 
     /// Convert an AppKit global rect (bottom-left origin) to an AX/CG rect (top-left origin).
@@ -22,7 +22,7 @@ public enum GeometryMath {
         )
     }
 
-    /// Inverse of `appKitToCG` — CG/AX rect (top-left) back to AppKit global (bottom-left).
+    /// Inverse of `appKitToCG`: CG/AX rect (top-left) back to AppKit global (bottom-left).
     public static func cgToAppKit(_ rect: CGRect, primaryHeight: CGFloat) -> CGRect {
         CGRect(
             x: rect.origin.x,
@@ -32,7 +32,7 @@ public enum GeometryMath {
         )
     }
 
-    /// Slide `rect` — keeping its size — so it sits inside `bounds`.
+    /// Slide `rect`, keeping its size, so it sits inside `bounds`.
     ///
     /// This is the fallback for a window that refuses the size we asked for: some apps have a
     /// minimum (several Electron-based editors won't go below ~720pt tall), so a half-height

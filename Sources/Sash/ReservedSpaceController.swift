@@ -9,7 +9,7 @@ import SashKit
 /// a widget sitting on your desktop, so the widget has to stay visible while you aim.
 final class ReservedSpaceView: NSView {
 
-    /// The screen's visible frame in window-local coordinates — the area being divided up.
+    /// The screen's visible frame in window-local coordinates: the area being divided up.
     var visible: CGRect = .zero { didSet { needsDisplay = true } }
 
     var margins: ScreenMargins = .none {
@@ -63,7 +63,7 @@ final class ReservedSpaceView: NSView {
 
     /// The bar you grab, drawn just *inside* the middle of each edge of the usable area rather
     /// than straddling it. An untouched screen has all four edges hard against the display's
-    /// own, where a straddling handle would be half off the screen — invisible on the edge you
+    /// own, where a straddling handle would be half off the screen, invisible on the edge you
     /// have not moved yet, which is the one you are about to reach for.
     private func drawGrip(for edge: ScreenMargins.Edge, on area: CGRect) {
         let long: CGFloat = 90, thick: CGFloat = 10, pad: CGFloat = 4
@@ -78,7 +78,7 @@ final class ReservedSpaceView: NSView {
         NSBezierPath(roundedRect: rect, xRadius: thick / 2, yRadius: thick / 2).fill()
     }
 
-    /// The size of a reserved strip, printed inside it — the number you'd otherwise have typed.
+    /// The size of a reserved strip, printed inside it: the number you'd otherwise have typed.
     private func drawMeasurement(for edge: ScreenMargins.Edge, on area: CGRect) {
         let points = margins.value(for: edge)
         guard points >= 1 else { return }
@@ -119,7 +119,7 @@ final class ReservedSpaceView: NSView {
         dragging = nil
     }
 
-    /// How far in from `edge` the pointer is — the margin that edge would have if dropped here.
+    /// How far in from `edge` the pointer is, i.e. the margin that edge would have if dropped.
     private func reach(of edge: ScreenMargins.Edge, at point: CGPoint) -> CGFloat {
         switch edge {
         case .top:    return visible.maxY - point.y
@@ -130,7 +130,7 @@ final class ReservedSpaceView: NSView {
     }
 
     /// The nearest grabbable edge of the usable area, or nil if the pointer is nowhere near one.
-    /// Nearest rather than first-match so the corners don't favour one axis arbitrarily.
+    /// Nearest rather than first-match so the corners don't favor one axis arbitrarily.
     private func edge(near point: CGPoint) -> ScreenMargins.Edge? {
         let area = usable
         var best: (edge: ScreenMargins.Edge, distance: CGFloat)?
@@ -166,13 +166,13 @@ final class ReservedSpaceWindow: NSWindow {
     override var canBecomeMain: Bool { true }
 
     override func keyDown(with event: NSEvent) {
-        // Unhandled keys fall through to the default beep-or-ignore behaviour.
+        // Unhandled keys fall through to the default beep-or-ignore behavior.
         if onKey?(event.keyCode) != true { super.keyDown(with: event) }
     }
 }
 
 /// Runs the reserved-space editor for one screen: puts the editor up, and reports back once the
-/// user has saved or cancelled.
+/// user has saved or canceled.
 final class ReservedSpaceController {
 
     private let screen: NSScreen
@@ -196,7 +196,7 @@ final class ReservedSpaceController {
         // Built at zero and moved, never with `screen:` in the initializer: that overload reads
         // the content rect relative to the given screen, so handing it a global frame offsets the
         // window by the screen's origin and the editor covers the wrong pixels. Measured, not
-        // guessed — the tint came up 274 pt right and 30 pt down of where it belonged.
+        // guessed: the tint came up 274 pt right and 30 pt down of where it belonged.
         let window = ReservedSpaceWindow(contentRect: .zero, styleMask: .borderless,
                                          backing: .buffered, defer: false)
         window.setFrame(screen.frame, display: false)
@@ -255,7 +255,7 @@ final class ReservedSpaceController {
         finish()
     }
 
-    /// Hand the whole screen back, without leaving the editor — so you can see what you undid.
+    /// Hand the whole screen back without leaving the editor, so you can see what you undid.
     @objc private func useWholeScreen() {
         view.margins = .none
     }
@@ -325,7 +325,7 @@ final class ReservedSpaceController {
 
     private func updateReadout(_ margins: ScreenMargins) {
         readout?.stringValue = margins.isEmpty
-            ? "Nothing kept clear — Sash may use the whole screen"
+            ? "Nothing kept clear. Sash may use the whole screen."
             : "Keeping clear: \(margins.summary)"
     }
 }

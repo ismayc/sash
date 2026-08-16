@@ -1,7 +1,7 @@
 #!/bin/bash
 # Build Sash and wrap the SwiftPM binary in a proper .app bundle, then sign it.
 # Uses the stable "Sash Self-Signed" identity if present (so the Accessibility grant
-# persists across rebuilds — see scripts/make_cert.sh); otherwise falls back to ad-hoc.
+# persists across rebuilds; see scripts/make_cert.sh). Otherwise falls back to ad-hoc.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

@@ -2,15 +2,15 @@ import AppKit
 import SashKit
 
 /// Keeps a set of screens tiled for as long as it is switched on: it arranges every window on
-/// each of them straight away, then watches for the *set* of windows changing — one opened,
-/// closed, or moved onto or off a screen — and re-tiles the screens that changed.
+/// each of them straight away, then watches for the *set* of windows changing (one opened,
+/// closed, or moved onto or off a screen) and re-tiles the screens that changed.
 ///
 /// Design notes:
 ///  - Only a change in **which** windows are present re-tiles. Resizing or nudging a window by
 ///    hand is left alone, so the toggle never fights you over a tweak you made on purpose.
 ///  - The watch is a 1-second poll of `CGWindowListCopyWindowInfo`, which is a single call for
-///    the whole system. Enumerating windows through the Accessibility API — what the actual
-///    arrange step does — costs a round-trip per window, too much to run on a timer.
+///    the whole system. Enumerating windows through the Accessibility API, which is what the
+///    arrange step does, costs a round-trip per window: too much to run on a timer.
 ///  - Watching every monitor costs no more polling than watching one: the window list is
 ///    system-wide either way, so it is fetched once per tick and sorted by screen. A screen
 ///    whose windows didn't change isn't touched, so a quiet monitor stays quiet.
@@ -19,12 +19,12 @@ import SashKit
 final class AutoArrangeController {
 
     /// Called when a watched screen disappears (unplugged), so the menu can redraw. The
-    /// preference itself lives in the app delegate and is deliberately left alone — a display
+    /// preference itself lives in the app delegate and is deliberately left alone. A display
     /// that goes away pauses, and comes back on its own.
     var onScreenLost: (() -> Void)?
 
     /// Which arrangement to use for a given number of windows on the screen. Supplied by the app
-    /// so the menu's per-count picks are honoured; unset means the automatic behaviour.
+    /// so the menu's per-count picks are honored; unset means the automatic behavior.
     var choiceForCount: (Int) -> AutoArrangeChoice = { _ in .automatic }
 
     /// The displays being kept tiled; empty when the toggle is off.
@@ -116,8 +116,8 @@ final class AutoArrangeController {
                   let bounds = info[kCGWindowBounds as String] as? NSDictionary,
                   let cgRect = CGRect(dictionaryRepresentation: bounds) else { continue }
             let frame = Geometry.cgToAppKit(cgRect)
-            let centre = CGPoint(x: frame.midX, y: frame.midY)
-            for screen in screens where screen.frame.contains(centre) {
+            let center = CGPoint(x: frame.midX, y: frame.midY)
+            for screen in screens where screen.frame.contains(center) {
                 if let display = screen.displayID { byDisplay[display, default: []].insert(id) }
                 break
             }
@@ -133,7 +133,7 @@ final class AutoArrangeController {
 
         // Not the whole visible frame: anything the user reserved on this screen is off limits.
         let usable = screen.workArea
-        // Only the user's *own* layouts get to pre-empt the computed grid — the built-ins are
+        // Only the user's *own* layouts get to pre-empt the computed grid. The built-ins are
         // starting points, not a statement that three windows should always be thirds. They do
         // become pickable once the menu names one for this count.
         let zones = AutoArrange.plan(count: windows.count,
@@ -146,7 +146,7 @@ final class AutoArrangeController {
         for pair in pairs {
             WindowEngine.setFrame(windows[pair.window].element, appKitRect: rects[pair.zone])
         }
-        // Let the windows settle before believing what they report — see WindowEngine
+        // Let the windows settle before believing what they report. See WindowEngine
         // .settleDelay. Checking immediately reads mid-flight geometry and invents refusals
         // that aren't real.
         DispatchQueue.main.asyncAfter(deadline: .now() + WindowEngine.settleDelay) { [weak self] in
@@ -156,8 +156,8 @@ final class AutoArrangeController {
 
     /// A window that ends up bigger than the tile it was given has a minimum size it won't go
     /// below (Slack and Music are common examples). Rather than leave it overlapping its
-    /// neighbour, grow its tile to the size it insists on and take that space off the tile next
-    /// to it — an uneven split that fits beats an even one that doesn't.
+    /// neighbor, grow its tile to the size it insists on and take that space off the tile next
+    /// to it: an uneven split that fits beats an even one that doesn't.
     private func fitStubbornWindows(_ windows: [ManagedWindow], pairs: [(zone: Int, window: Int)],
                                     zones: [CGRect], within visible: CGRect) {
         var minimums = [CGSize](repeating: .zero, count: zones.count)

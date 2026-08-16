@@ -4,7 +4,7 @@ import CoreGraphics
 /// How wide auto-arrange casts its net: nothing, every display attached, or a chosen few.
 ///
 /// `allDisplays` is deliberately not the same as ticking every monitor by hand. It is a standing
-/// choice — plug a screen in later and it is kept tiled too, with no trip back to the menu —
+/// choice (plug a screen in later and it is kept tiled too, with no trip back to the menu),
 /// where a hand-picked set means *those* monitors and nothing else, however many arrive after.
 /// Both survive a display going away: which displays a scope resolves to is worked out fresh
 /// from what's plugged in right now, so an absent monitor pauses rather than cancels.
@@ -37,7 +37,7 @@ public enum AutoArrangeScope: Equatable {
         }
     }
 
-    /// Anything unrecognised reads back as `.off`, so a stale or hand-edited preference leaves
+    /// Anything unrecognized reads back as `.off`, so a stale or hand-edited preference leaves
     /// auto-arrange alone rather than tiling a display the user never asked for. The superseded
     /// `display:5` form still reads, so an existing install keeps tiling the screen it had.
     public init(rawValue: String) {
@@ -57,7 +57,7 @@ public enum AutoArrangeScope: Equatable {
         return ids.isEmpty ? .off : .displays(Set(ids))
     }
 
-    /// Whether this display is one of the ones being kept tiled — what the menu ticks.
+    /// Whether this display is one of the ones being kept tiled, which is what the menu ticks.
     public func includes(_ id: CGDirectDisplayID) -> Bool {
         switch self {
         case .off: return false
@@ -68,7 +68,7 @@ public enum AutoArrangeScope: Equatable {
 
     /// The displays to keep tiled right now, given what is attached.
     ///
-    /// A chosen display that isn't attached resolves away — paused, not cancelled, exactly as
+    /// A chosen display that isn't attached resolves away: paused, not canceled, exactly as
     /// `DisplayTarget` describes. The order follows `attached`, so callers see displays in the
     /// system's own order rather than in id order.
     public func active(attached: [CGDirectDisplayID]) -> [CGDirectDisplayID] {
@@ -84,8 +84,8 @@ public enum AutoArrangeScope: Equatable {
 
     /// The scope you get by ticking or unticking one display.
     ///
-    /// Unticking a display while *all* of them are on means "all the ones I have, except this"
-    /// — the two monitors left are named explicitly, because "all" has to keep meaning "and
+    /// Unticking a display while *all* of them are on means "all the ones I have, except this".
+    /// The monitors left over are named explicitly, because "all" has to keep meaning "and
     /// whatever I plug in next". Unticking the last one leaves `off` rather than an empty set.
     public func toggling(_ id: CGDirectDisplayID, attached: [CGDirectDisplayID]) -> AutoArrangeScope {
         var ids: Set<CGDirectDisplayID>

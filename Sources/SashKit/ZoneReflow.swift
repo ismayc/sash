@@ -3,16 +3,16 @@ import CoreGraphics
 
 /// Adjusts a set of tiles when a window flatly refuses to fit the one it was given.
 ///
-/// Some apps enforce a minimum window size — several Electron-based editors will not go below
-/// roughly 720pt tall — so a half-height tile leaves one overhanging its neighbour. Rather than
+/// Some apps enforce a minimum window size (several Electron-based editors will not go below
+/// roughly 720pt tall), so a half-height tile leaves one overhanging its neighbor. Rather than
 /// accept the overlap, the shared edge moves: the stubborn window's tile grows to the size the
 /// window insists on, and the tile on the other side of that edge gives up the difference.
 ///
-/// The result is a slightly uneven split instead of an exact one, which is the better trade —
+/// The result is a slightly uneven split instead of an exact one, which is the better trade:
 /// uneven tiles that don't overlap beat even tiles that do. A donor never gives up more than
-/// `maxDonationFraction` of itself, so one stubborn window can't squash its neighbour flat.
+/// `maxDonationFraction` of itself, so one stubborn window can't squash its neighbor flat.
 ///
-/// This type is pure — no AppKit — so it is fully unit-testable.
+/// This type is pure, with no AppKit, so it is fully unit-testable.
 public enum ZoneReflow {
 
     /// Differences below this are rounding, not a refusal.
@@ -25,7 +25,7 @@ public enum ZoneReflow {
     /// that edge. `minimums[i]` is the size window *i* insisted on, or `.zero` when it fitted
     /// fine and so tells us nothing about its limits.
     ///
-    /// Rects are AppKit global (bottom-left origin). Both axes are adjusted — minimum heights
+    /// Rects are AppKit global (bottom-left origin). Both axes are adjusted: minimum heights
     /// are the common case, but minimum widths bite on narrow columns just the same.
     public static func adjusted(zones: [CGRect], minimums: [CGSize]) -> [CGRect] {
         guard zones.count == minimums.count else { return zones }
@@ -37,7 +37,7 @@ public enum ZoneReflow {
     ///
     /// A *cut* is a coordinate where one tile ends and another begins; shifting it trades
     /// length between the two sides. Which tiles sit on a cut is read from the tiles as they
-    /// came in, while the space available to trade is read from the run so far — a tile that
+    /// came in, while the space available to trade is read from the run so far, so a tile that
     /// already donated to one edge won't over-donate to the next.
     ///
     /// Every tile touching a cut moves together, which keeps the tiling watertight. Where two

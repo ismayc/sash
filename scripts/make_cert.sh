@@ -4,7 +4,7 @@
 # Why: an ad-hoc signature (`codesign -s -`) changes every rebuild, so macOS forgets the
 # Accessibility permission each time. Signing with a *stable* identity gives the app a
 # consistent designated requirement, so you grant Accessibility once and it sticks across
-# rebuilds. This is a local dev cert — not an Apple Developer ID (which would also enable
+# rebuilds. This is a local dev cert, not an Apple Developer ID (which would also enable
 # distribution/notarization).
 #
 # Run this ONCE. build_app.sh then signs with it automatically if present.
@@ -21,7 +21,7 @@ fi
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-# Transient — the p12 exists only between the two commands below. Apple's `security` rejects
+# Transient: the p12 exists only between the two commands below. Apple's `security` rejects
 # empty-password PKCS#12 bundles, so it has to be something.
 P12_PASS="sash-import"
 
@@ -34,7 +34,7 @@ openssl req -new -x509 -key "$TMP/key.pem" -out "$TMP/cert.pem" -days 3650 \
     -addext "extendedKeyUsage=critical,codeSigning" >/dev/null 2>&1
 # OpenSSL 3 defaults to AES-256 + SHA-256 MAC, which Apple's Security framework cannot read
 # ("MAC verification failed during PKCS12 import"). Pin the legacy 3DES + SHA-1 encoding it
-# does understand. Errors are NOT silenced here — a bad p12 fails confusingly downstream.
+# does understand. Errors are NOT silenced here, because a bad p12 fails confusingly later.
 openssl pkcs12 -export -legacy -inkey "$TMP/key.pem" -in "$TMP/cert.pem" \
     -out "$TMP/cert.p12" -passout "pass:$P12_PASS" -name "${IDENTITY}" \
     -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -macalg sha1
@@ -52,12 +52,12 @@ echo
 # An imported-but-untrusted cert does not show up as a *valid* codesigning identity, and
 # build_app.sh would quietly fall back to ad-hoc again. Catch that here instead.
 if ! security find-identity -v -p codesigning | grep -q "${IDENTITY}"; then
-    echo "✗ “${IDENTITY}” imported but is not a valid codesigning identity — the trust step"
+    echo "✗ “${IDENTITY}” imported but is not a valid codesigning identity. The trust step"
     echo "  did not take. Open Keychain Access, find “${IDENTITY}” in the login keychain,"
     echo "  and set Trust → Code Signing to “Always Trust”, then re-run this script."
     exit 1
 fi
 
 echo "✓ Created identity “${IDENTITY}”."
-echo "  Rebuild with ./scripts/build_app.sh — it will sign with this identity automatically."
+echo "  Rebuild with ./scripts/build_app.sh; it will sign with this identity automatically."
 echo "  Grant Accessibility once more after the first signed build; it will then persist."

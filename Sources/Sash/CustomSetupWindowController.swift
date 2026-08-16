@@ -3,7 +3,7 @@ import SashKit
 
 /// The "Custom Setup" window. Workflow:
 ///   1. Pick the target monitor (drag the windows you want onto it first).
-///   2. Design zones on the canvas — generate a grid, or add/move/resize freely.
+///   2. Design zones on the canvas: generate a grid, or add/move/resize freely.
 ///   3. For each zone, pick which open window goes there.
 ///   4. Apply (snaps everything into place) and optionally Save the layout for reuse.
 final class CustomSetupWindowController: NSWindowController {
@@ -159,7 +159,7 @@ final class CustomSetupWindowController: NSWindowController {
 
         // Primary action: arm these zones so you can drag windows into them.
         let dragHint = NSTextField(wrappingLabelWithString:
-            "Then just drag any window — the zones light up and it snaps into place.")
+            "Then just drag any window. The zones light up and it snaps into place.")
         dragHint.font = .systemFont(ofSize: 10)
         dragHint.textColor = .secondaryLabelColor
 
@@ -217,7 +217,7 @@ final class CustomSetupWindowController: NSWindowController {
 
     private func rebuildWindowPopup() {
         windowPopup.removeAllItems()
-        windowPopup.addItem(withTitle: "— none —")
+        windowPopup.addItem(withTitle: "(none)")
         for w in windowsOnScreen { windowPopup.addItem(withTitle: w.label) }
         syncWindowPopupToSelection()
     }

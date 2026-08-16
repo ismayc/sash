@@ -14,13 +14,13 @@ func runZoneReflowTests() {
         T.expect(out == [bottom, top])
     }
 
-    T.test("a stubborn window's tile grows and its neighbour gives up the difference") {
-        // The bottom window refuses to go below 440 — 40 more than its tile.
+    T.test("a stubborn window's tile grows and its neighbor gives up the difference") {
+        // The bottom window refuses to go below 440, which is 40 more than its tile.
         let out = ZoneReflow.adjusted(zones: [bottom, top],
                                       minimums: [CGSize(width: 1000, height: 440), .zero])
         T.expect(T.approx(out[0].height, 440), "grew to what the window insists on")
         T.expect(T.approx(out[0].minY, 0), "still anchored to the bottom edge")
-        T.expect(T.approx(out[1].height, 360), "neighbour gave up the difference")
+        T.expect(T.approx(out[1].height, 360), "neighbor gave up the difference")
         T.expect(T.approx(out[1].minY, 440), "and moved up to meet it")
         T.expect(T.approx(out[0].maxY, out[1].minY), "the tiling stays watertight")
         let total = out[0].height + out[1].height
@@ -70,7 +70,7 @@ func runZoneReflowTests() {
         T.expect(out == [lonely])
     }
 
-    T.test("a tile whose neighbour has no room to give is left alone") {
+    T.test("a tile whose neighbor has no room to give is left alone") {
         // The top tile is already at its own minimum, so there is nothing to trade.
         let out = ZoneReflow.adjusted(zones: [bottom, top],
                                       minimums: [CGSize(width: 1000, height: 500),
@@ -83,7 +83,7 @@ func runZoneReflowTests() {
     }
 
     T.test("a full row of tiles moves together, keeping the grid watertight") {
-        // Three across the top, two across the bottom — the computed 5-window ultrawide grid.
+        // Three across the top, two across the bottom: the computed 5-window ultrawide grid.
         let bottomRow = [CGRect(x: 0, y: 0, width: 500, height: 400),
                          CGRect(x: 500, y: 0, width: 500, height: 400)]
         let topRow = [CGRect(x: 0, y: 400, width: 333, height: 400),
@@ -101,7 +101,7 @@ func runZoneReflowTests() {
         }
     }
 
-    T.test("an untouched column is not dragged along by a neighbour's split") {
+    T.test("an untouched column is not dragged along by a neighbor's split") {
         // "My Layout": full-height columns either side of a column split in two. Only the
         // split should move.
         let leftFull = CGRect(x: 0, y: 0, width: 333, height: 800)

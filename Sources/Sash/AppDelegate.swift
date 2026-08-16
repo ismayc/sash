@@ -17,7 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // Auto-arrange state (persisted in UserDefaults).
     /// What the user *asked* to keep tiled: nothing, one display, or all of them. Deliberately
-    /// not cleared when a chosen screen goes away — a monitor asleep or unplugged pauses
+    /// not cleared when a chosen screen goes away. A monitor asleep or unplugged pauses
     /// auto-arrange, and it resumes by itself once the screen is back. What is actually running
     /// is `autoArrange.displayIDs`.
     private var autoArrangeScope: AutoArrangeScope = .off
@@ -27,8 +27,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var autoArrangeChoices: [Int: AutoArrangeChoice] = [:]
 
     /// Window counts that get their own layout picker in the menu. Three and four are where
-    /// taste actually differs — an asymmetric custom split one day, plain thirds or quarters
-    /// the next — so those are the counts worth a standing choice.
+    /// taste actually differs: an asymmetric custom split one day, plain thirds or quarters
+    /// the next. Those are the counts worth a standing choice.
     private static let choosableCounts = [3, 4]
 
     /// Menu title for "ignore saved layouts, just tile evenly".
@@ -108,7 +108,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             button.image = NSImage(systemSymbolName: "square.grid.2x2",
                                    accessibilityDescription: "Sash")
         }
-        // One menu object for the app's lifetime, refilled on demand — see `menuNeedsUpdate`.
+        // One menu object for the app's lifetime, refilled on demand. See `menuNeedsUpdate`.
         let menu = NSMenu()
         menu.delegate = self
         statusItem.menu = menu
@@ -239,7 +239,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The monitors are ticks rather than a one-of-these choice, so two screens out of three is
     /// as easy to say as one. "All monitors" stays a separate entry because it means something
     /// the ticks can't: *and whatever you plug in next*. Each click closes the menu, as menu
-    /// clicks do — reopen it to tick the next monitor.
+    /// clicks do, so reopen it to tick the next monitor.
     private func autoArrangeMenuItem() -> NSMenuItem {
         let header = NSMenuItem(title: "Auto-arrange windows on:  \(autoArrangeStatus)",
                                 action: nil, keyEquivalent: "")
@@ -276,7 +276,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// What the auto-arrange header reads. Chosen-but-absent screens say so by name instead of
-    /// reading "Off", because the preference is paused, not cancelled — "Off" would be a lie that
+    /// reading "Off", because the preference is paused, not canceled. "Off" would be a lie that
     /// invites you to switch it on again.
     private var autoArrangeStatus: String {
         switch autoArrangeScope {
@@ -290,7 +290,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard !present.isEmpty else {
                 let names = ids.compactMap { autoArrangeDisplayNames[$0] }.sorted()
                 let known = names.isEmpty ? "Chosen displays" : names.joined(separator: " + ")
-                return "\(known) — waiting, not connected"
+                return "\(known) (waiting, not connected)"
             }
             // Two names still read as names; beyond that a count is kinder than a run-on title.
             let names = present.map(\.uniqueDisplayName)
@@ -300,7 +300,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// A picker for how auto-arrange should tile exactly `count` windows: the even grid, then
-    /// every layout — built-in or custom — that has that many non-overlapping zones.
+    /// every layout, built-in or custom, that has that many non-overlapping zones.
     ///
     /// The tick sits on whatever is *actually* in force, which before anything is picked is
     /// whatever auto-arrange would have chosen on its own. So the menu always reads as the truth
@@ -346,7 +346,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let submenu = NSMenu()
         for (i, s) in NSScreen.screens.enumerated() {
             let margins = store.margins(for: s.uniqueDisplayName)
-            let suffix = margins.isEmpty ? "" : "  —  \(margins.summary)"
+            let suffix = margins.isEmpty ? "" : "  ·  \(margins.summary)"
             let item = NSMenuItem(title: s.label(index: i) + suffix,
                                   action: #selector(editReservedSpace(_:)), keyEquivalent: "")
             item.target = self
@@ -364,7 +364,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// What the reserved-space header reads: the display kept clear, or how many of them. A
-    /// display that isn't attached still counts — the setting is remembered by name, so the
+    /// display that isn't attached still counts, because the setting is remembered by name, so
     /// strip is still protected when that monitor comes back.
     private var reservedSpaceStatus: String {
         let store = ScreenMarginsStore.shared
@@ -372,7 +372,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .filter { !store.margins(for: $0.uniqueDisplayName).isEmpty }
         switch reserved.count {
         case 0: return store.isEmpty ? "Nothing" : "Only on a monitor that isn't connected"
-        case 1: return "\(reserved[0].uniqueDisplayName) — "
+        case 1: return "\(reserved[0].uniqueDisplayName): "
             + store.margins(for: reserved[0].uniqueDisplayName).summary
         default: return "\(reserved.count) monitors"
         }
@@ -480,7 +480,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Re-tile straight away so a newly-protected strip is cleared now rather than at the next
-    /// window change — the same reasoning as picking an auto-arrange layout.
+    /// window change, the same reasoning as picking an auto-arrange layout.
     private func reservedSpaceChanged() {
         if autoArrange.isRunning { autoArrange.arrangeNow() }
         rebuildMenu()
@@ -516,7 +516,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// ⌃⌥⌘A: tick the screen the mouse is on in or out of auto-arrange — the one-keystroke
+    /// ⌃⌥⌘A: tick the screen the mouse is on in or out of auto-arrange, the one-keystroke
     /// version of ticking it in the menu. Pressed on each of two monitors in turn, it builds
     /// the same pair the menu would; pressed on the last one still on, it switches off.
     private func toggleAutoArrangeUnderMouse() {
@@ -588,7 +588,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// screen that has come back, and drop it on one that has gone. Runs both from the menu item
     /// and from `didChangeScreenParametersNotification`.
     @objc private func refreshMonitors() {
-        // Already watching the same screen, so nothing started or stopped — but this fires on
+        // Already watching the same screen, so nothing started or stopped. But this fires on
         // resolution and arrangement changes too, and the tiles are sized for the old geometry.
         // The window *set* is unchanged, so the watcher would never re-tile on its own.
         if !reconcileAutoArrange(), autoArrange.isRunning {
@@ -691,7 +691,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 extension AppDelegate: NSMenuDelegate {
     /// Refill the menu every time it is opened. A menu-bar agent has no Dock icon and is never
     /// really "activated", so the notifications that would otherwise prompt a rebuild are not
-    /// dependable — the only list guaranteed not to be stale is one built as it is shown.
+    /// dependable, and the only list guaranteed not to be stale is one built as it is shown.
     ///
     /// Deliberately does not re-tile: opening a menu to look at it should never move windows.
     func menuNeedsUpdate(_ menu: NSMenu) {

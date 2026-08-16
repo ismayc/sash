@@ -28,7 +28,7 @@ xcrun llvm-cov report "$BIN" \
     Sources/SashKit
 
 # Enforce a coverage floor so the README badge stays honest. If new SashKit code lands
-# without tests, this fails CI — add tests (or lower THRESHOLD deliberately).
+# without tests, this fails CI. Add tests, or lower THRESHOLD deliberately.
 THRESHOLD="${COVERAGE_THRESHOLD:-100}"
 PERCENT="$(xcrun llvm-cov export "$BIN" \
     -instr-profile="$COVDIR/tests.profdata" \

@@ -5,17 +5,17 @@ import CoreGraphics
 /// toggle can keep that screen arranged without the user picking a layout first.
 ///
 /// The shape comes from the *screen's* aspect ratio: an ultrawide wants columns where a laptop
-/// wants a 2×2. Candidate shapes are scored by how square the resulting tiles come out —
+/// wants a 2×2. Candidate shapes are scored by how square the resulting tiles come out:
 /// square-ish tiles are the ones that stay usable as the window count grows. This type is
-/// pure — no AppKit — so it is fully unit-testable.
+/// pure, with no AppKit, so it is fully unit-testable.
 /// Which arrangement auto-arrange should use for one particular window count.
 ///
 /// Taste differs by count rather than by screen: three windows might want an asymmetric custom
 /// split one day and plain thirds the next. Storing the pick per count lets the menu offer both
 /// without disturbing what every other count does.
 public enum AutoArrangeChoice: Equatable {
-    /// Nothing picked: the original behaviour — the first tileable layout the user saved
-    /// themselves, and the computed grid when they haven't saved a fitting one.
+    /// Nothing picked: the original behavior, which is the first tileable layout the user
+    /// saved themselves, and the computed grid when they haven't saved a fitting one.
     case automatic
     /// Always the computed grid, even when a saved layout would fit.
     case grid
@@ -27,7 +27,7 @@ public enum AutoArrangeChoice: Equatable {
     private static let namedPrefix = "layout:"
 
     /// A string form for UserDefaults. The `layout:` prefix means a layout may be named
-    /// anything — including "grid" — without colliding with the fixed cases.
+    /// anything, "grid" included, without colliding with the fixed cases.
     public var rawValue: String {
         switch self {
         case .automatic: return "auto"
@@ -36,7 +36,7 @@ public enum AutoArrangeChoice: Equatable {
         }
     }
 
-    /// Anything unrecognised reads back as `.automatic`, so a stale or hand-edited preference
+    /// Anything unrecognized reads back as `.automatic`, so a stale or hand-edited preference
     /// degrades to the default rather than failing.
     public init(rawValue: String) {
         if rawValue == Self.gridRawValue {
@@ -58,7 +58,7 @@ public enum AutoArrange {
     static let targetTileAspect = 1.0
 
     /// Two zones may overlap by this fraction of the screen before a saved layout is judged
-    /// un-tileable — enough slack for rounding, not enough to stack two windows.
+    /// un-tileable: enough slack for rounding, not enough to stack two windows.
     static let overlapTolerance: CGFloat = 0.005
 
     /// Column/row shape for `count` windows on a screen of `aspectRatio` (width ÷ height).
@@ -71,7 +71,7 @@ public enum AutoArrange {
         var bestScore = Double.greatestFiniteMagnitude
         for rows in 1...n {
             let cols = Int((Double(n) / Double(rows)).rounded(.up))
-            // Skip shapes where the full rows already hold every window — the last row of a
+            // Skip shapes where the full rows already hold every window, since the last row of a
             // (rows, cols) pair like 4 rows × 2 cols for 5 windows would come out empty.
             guard (rows - 1) * cols < n else { continue }
             let tileAspect = aspect * Double(rows) / Double(cols)
@@ -128,7 +128,7 @@ public enum AutoArrange {
     /// fall back to the computed grid. A menu can call this to tick the entry actually in force,
     /// including before anything has been picked.
     ///
-    /// `savedLayouts` is the user's own — the only ones allowed to pre-empt the grid on their
+    /// `savedLayouts` is the user's own, the only ones allowed to pre-empt the grid on their
     /// own, because the built-ins are starting points, not a statement that three windows should
     /// always be thirds. `pickable` is everything a name may refer to, built-ins included.
     public static func resolvedLayout(count: Int, choice: AutoArrangeChoice,
@@ -140,7 +140,7 @@ public enum AutoArrange {
             if let match = candidates(count: count, from: pickable).first(where: { $0.name == name }) {
                 return match
             }
-            // The named layout is gone or no longer fits — behave as if nothing was picked.
+            // The named layout is gone or no longer fits, so behave as if nothing was picked.
             return candidates(count: count, from: savedLayouts).first
         case .automatic:
             return candidates(count: count, from: savedLayouts).first
@@ -167,7 +167,7 @@ public enum AutoArrange {
     }
 
     /// Pair each zone with the window already nearest to it, so arranging moves windows as
-    /// little as possible — whatever is on the left stays on the left.
+    /// little as possible: whatever is on the left stays on the left.
     ///
     /// Globally greedy: the closest zone/window pair is fixed first, then the closest of what
     /// remains, and so on. Ties break by index so the same input always gives the same result.

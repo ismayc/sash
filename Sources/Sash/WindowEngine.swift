@@ -21,7 +21,7 @@ enum WindowEngine {
     /// How long to let a window settle before trusting what it reports back.
     ///
     /// Setting a frame is not synchronous: an app processes the change on its own run loop and
-    /// only then reports its new geometry. Electron-based editors are the worst offenders —
+    /// only then reports its new geometry. Electron-based editors are the worst offenders:
     /// read `kAXSize` straight after writing it and you get a mid-flight value, which is
     /// exactly how "it refused the size" gets mistaken for the truth. Everything that inspects
     /// the result of a move has to wait first.
@@ -36,7 +36,7 @@ enum WindowEngine {
         setPosition(window, CGPoint(x: cg.origin.x, y: cg.origin.y))
     }
 
-    /// Once the window has settled, slide it back inside `bounds` if it is overhanging — an app
+    /// Once the window has settled, slide it back inside `bounds` if it is overhanging. An app
     /// that genuinely won't shrink to its zone should at least stay somewhere you can grab it.
     static func keepOnScreenAfterSettling(_ window: AXUIElement, within bounds: CGRect) {
         DispatchQueue.main.asyncAfter(deadline: .now() + settleDelay) {

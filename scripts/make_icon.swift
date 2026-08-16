@@ -1,6 +1,6 @@
 // Renders Sash's app icon into a .iconset directory (passed as arg 1) using CoreGraphics.
 // Motif: a window layout (one tall left pane + two right panes) with the top-right pane
-// highlighted — a window "snapping" into its zone — on a blue→indigo gradient tile.
+// highlighted, so it reads as a window "snapping" into its zone, on a blue-to-indigo tile.
 import CoreGraphics
 import ImageIO
 import Foundation

@@ -23,7 +23,7 @@ enum T {
         checks += 1
         if !condition {
             failures += 1
-            let detail = message().isEmpty ? "" : " — \(message())"
+            let detail = message().isEmpty ? "" : ": \(message())"
             print("  ✘ [\(currentTest)]\(detail)  (\(file):\(line))")
         }
     }

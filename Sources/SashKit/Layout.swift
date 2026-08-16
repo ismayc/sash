@@ -4,7 +4,7 @@ import CoreGraphics
 /// A zone is a rectangle expressed as fractions (0...1) of a screen's *visible* frame,
 /// using a top-left origin (x grows right, y grows down) because that's how people picture
 /// a layout on paper. Zones may overlap (e.g. two full-screen zones for windows you cycle
-/// between). This type is pure — no AppKit — so it is fully unit-testable.
+/// between). This type is pure, with no AppKit, so it is fully unit-testable.
 public struct Zone: Codable, Hashable {
     /// Stable identity so window assignments survive add/delete/reorder in the editor.
     public var id: UUID

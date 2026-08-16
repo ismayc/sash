@@ -43,7 +43,7 @@ extension NSScreen {
     /// `visibleFrame` already excludes the menu bar and the Dock, because those reserve their
     /// space with the window server. Desktop widgets and the like reserve nothing, so this is
     /// the only thing standing between them and a tile. Everything that sizes or clamps a window
-    /// goes through here rather than `visibleFrame` — an area Sash refuses to *snap* into but
+    /// goes through here rather than `visibleFrame`. An area Sash refuses to *snap* into but
     /// happily *shoves* a window back into would keep the strip clear only some of the time.
     var workArea: CGRect {
         ScreenMarginsStore.shared.margins(for: uniqueDisplayName).applied(to: visibleFrame)
@@ -66,8 +66,8 @@ extension NSScreen {
         DisplayNaming.name(reported: localizedName, index: index)
     }
 
-    /// Names for every attached screen, in `NSScreen.screens` order. Identical models — two of the
-    /// same LG, say — get a "(1)", "(2)"… suffix so the menu stays unambiguous.
+    /// Names for every attached screen, in `NSScreen.screens` order. Identical models (two of
+    /// the same LG, say) get a "(1)", "(2)"… suffix so the menu stays unambiguous.
     static var uniqueDisplayNames: [String] {
         DisplayNaming.uniqueNames(reported: screens.map(\.localizedName))
     }
@@ -78,12 +78,12 @@ extension NSScreen {
         return NSScreen.uniqueDisplayNames[i]
     }
 
-    /// A short human label, e.g. "LG ULTRAWIDE — 3440×1440".
+    /// A short human label, e.g. "LG ULTRAWIDE (3440×1440)".
     func label(index: Int) -> String {
         let px = Int(frame.width * backingScaleFactor)
         let py = Int(frame.height * backingScaleFactor)
         let names = NSScreen.uniqueDisplayNames
         let name = index < names.count ? names[index] : displayName(index: index)
-        return "\(name) — \(px)×\(py)"
+        return "\(name) (\(px)×\(py))"
     }
 }

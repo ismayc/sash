@@ -46,7 +46,7 @@ func runScreenMarginsTests() {
 
     T.test("greedy opposing margins are scaled down together, keeping their balance") {
         // 700 + 700 asked for out of 800; only 640 (80%) may be taken, split in the same 1:1
-        // ratio — a screen can never be reserved down to nothing.
+        // ratio. A screen can never be reserved down to nothing.
         let area = ScreenMargins(top: 700, bottom: 700).applied(to: visible)
         T.expect(T.approx(area.height, 160), "got height \(area.height)")
         T.expect(T.approx(area.minY, visible.minY + 320), "got minY \(area.minY)")
@@ -136,7 +136,7 @@ func runScreenMarginsTests() {
     T.test("a margin of less than a point is nothing at all") {
         // Brushing an edge mid-drag once left a screen reading "right 0 pt" in the menu: a
         // reserved strip nobody asked for, printed as zero. A sub-point margin now rounds away
-        // everywhere at once — stored, shown and applied.
+        // everywhere at once: stored, shown and applied.
         let brushed = ScreenMargins(bottom: 385).setting(.right, to: 0.4, within: visible)
         T.expect(brushed.right == 0, "got \(brushed.right)")
         T.expect(brushed.summary == "bottom 385 pt", brushed.summary)

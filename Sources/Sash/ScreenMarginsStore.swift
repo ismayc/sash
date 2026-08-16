@@ -5,7 +5,7 @@ import SashKit
 ///
 /// Keyed by display *name* rather than id, so the strip you protected on a monitor is still
 /// protected after that monitor sleeps, is unplugged, or comes back through a KVM under a
-/// freshly-issued display id — see `ScreenMargins.decodeBook`.
+/// freshly-issued display id. See `ScreenMargins.decodeBook`.
 final class ScreenMarginsStore {
     static let shared = ScreenMarginsStore()
 
@@ -22,7 +22,7 @@ final class ScreenMarginsStore {
         book = ScreenMargins.decodeBook(defaults.data(forKey: Self.key))
     }
 
-    /// What is kept clear on the named display — nothing, for a display never configured.
+    /// What is kept clear on the named display, or nothing for one never configured.
     func margins(for displayName: String) -> ScreenMargins {
         book[displayName] ?? .none
     }
@@ -43,7 +43,7 @@ final class ScreenMarginsStore {
 
     private func persist() {
         book = book.filter { !$0.value.isEmpty }
-        // Nothing to write means something went wrong encoding, not "reserve nothing" — leave
+        // Nothing to write means something went wrong encoding, not "reserve nothing", so leave
         // the stored setting as it was rather than wiping a screen's margins on the way out.
         if let data = ScreenMargins.encodeBook(book) {
             defaults.set(data, forKey: Self.key)

@@ -15,7 +15,7 @@ struct DragSnapConfig {
 }
 
 /// Watches global mouse activity and, while an armed layout is active, snaps whatever window
-/// you drag into whichever zone you release it over — FancyZones-style.
+/// you drag into whichever zone you release it over, FancyZones-style.
 ///
 /// Design notes:
 ///  - Detecting a *window move* (versus a text selection or scroll) is the crux: we only
@@ -114,7 +114,7 @@ final class DragSnapController {
     }
 
     private func keyDown(_ event: NSEvent) {
-        // Esc during an active snap cancels it — the window drops where it is.
+        // Esc during an active snap cancels it, and the window drops where it is.
         if event.keyCode == escKeyCode, engaged {
             cancelled = true
             engaged = false

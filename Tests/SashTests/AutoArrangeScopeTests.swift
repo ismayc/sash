@@ -46,7 +46,7 @@ func runAutoArrangeScopeTests() {
     }
 
     T.test("a chosen display that is away pauses rather than tiling another") {
-        // The same rule as DisplayTarget: unplugged is paused, not cancelled.
+        // The same rule as DisplayTarget: unplugged is paused, not canceled.
         T.expect(AutoArrangeScope.displays([5]).active(attached: [1, 9]).isEmpty)
         T.expect(AutoArrangeScope.displays([5]).active(attached: attached) == [5])
     }
@@ -72,7 +72,7 @@ func runAutoArrangeScopeTests() {
 
     T.test("unticking one of all monitors names the rest explicitly") {
         // "All" has to keep meaning "and whatever I plug in next", so it can't quietly become
-        // "all but that one" — the two that are left are spelled out.
+        // "all but that one"; the two that are left are spelled out.
         T.expect(AutoArrangeScope.allDisplays.toggling(5, attached: attached) == .displays([1, 9]))
     }
 

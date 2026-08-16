@@ -80,7 +80,7 @@ func runAutoArrangeTests() {
         T.expect(AutoArrange.isTileable(Layout(name: "Halves", zones: Layout.grid(cols: 2, rows: 1))))
         T.expect(AutoArrange.isTileable(Layout(name: "Empty", zones: [])))
         T.expect(AutoArrange.isTileable(Layout(name: "One", zones: [Zone(name: "Full", x: 0, y: 0, w: 1, h: 1)])))
-        // A gap between zones is the user's business — only overlap disqualifies a layout.
+        // A gap between zones is the user's business; only overlap disqualifies a layout.
         let gapped = Layout(name: "Gapped", zones: [
             Zone(name: "Left",  x: 0,   y: 0, w: 0.4, h: 1),
             Zone(name: "Right", x: 0.6, y: 0, w: 0.4, h: 1),
@@ -112,7 +112,7 @@ func runAutoArrangeTests() {
         let planned = AutoArrange.plan(count: 2, aspectRatio: ultrawide,
                                        savedLayouts: [wrongSize, overlapping])
         let computed = AutoArrange.zones(count: 2, aspectRatio: ultrawide)
-        // Compare geometry, not identity — every Zone gets a fresh id.
+        // Compare geometry, not identity, because every Zone gets a fresh id.
         T.expect(planned.map(\.x) == computed.map(\.x) && planned.map(\.w) == computed.map(\.w))
     }
 
@@ -147,10 +147,10 @@ func runAutoArrangeTests() {
     }
 
     T.test("an explicit choice beats the saved layout that would otherwise win") {
-        // Automatic keeps the old behaviour: the user's own layout pre-empts the grid.
+        // Automatic keeps the old behavior: the user's own layout pre-empts the grid.
         T.expect(AutoArrange.plan(count: 3, aspectRatio: ultrawide, choice: .automatic,
                                   savedLayouts: [mine], pickable: [thirds, mine]) == mine.zones)
-        // Naming a built-in reaches past the saved layout — the whole point of the picker.
+        // Naming a built-in reaches past the saved layout, the whole point of the picker.
         T.expect(AutoArrange.plan(count: 3, aspectRatio: ultrawide, choice: .named("Thirds"),
                                   savedLayouts: [mine], pickable: [thirds, mine]) == thirds.zones)
         // And the grid can be forced even though a saved layout fits.
@@ -160,7 +160,7 @@ func runAutoArrangeTests() {
     }
 
     T.test("a choice naming a layout that is gone falls back to automatic") {
-        // Deleted, renamed, or edited to a different number of zones — all the same to us.
+        // Deleted, renamed, or edited to a different number of zones: all the same to us.
         T.expect(AutoArrange.plan(count: 3, aspectRatio: ultrawide, choice: .named("Deleted"),
                                   savedLayouts: [mine], pickable: [mine]) == mine.zones)
         let noSaved = AutoArrange.plan(count: 3, aspectRatio: ultrawide, choice: .named("Deleted"),
@@ -186,7 +186,7 @@ func runAutoArrangeTests() {
         }
         // A layout named like one of the fixed cases still round-trips.
         T.expect(AutoArrangeChoice(rawValue: AutoArrangeChoice.named("grid").rawValue) == .named("grid"))
-        // Anything unrecognised degrades to the default rather than failing.
+        // Anything unrecognized degrades to the default rather than failing.
         T.expect(AutoArrangeChoice(rawValue: "nonsense") == .automatic)
         T.expect(AutoArrangeChoice(rawValue: "") == .automatic)
     }

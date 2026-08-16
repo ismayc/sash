@@ -18,9 +18,9 @@ struct ManagedWindow: Identifiable, Hashable {
     /// Current frame in AppKit global coordinates (bottom-left origin).
     let appKitFrame: CGRect
 
-    /// Human label for pickers, e.g. "Positron — Untitled".
+    /// Human label for pickers, e.g. "Positron: Untitled".
     var label: String {
-        title.isEmpty ? appName : "\(appName) — \(title)"
+        title.isEmpty ? appName : "\(appName): \(title)"
     }
 
     static func == (lhs: ManagedWindow, rhs: ManagedWindow) -> Bool { lhs.id == rhs.id }
@@ -78,7 +78,7 @@ enum WindowInfo {
         return true
     }
 
-    /// A window's current frame in AppKit global coordinates — used to check what a window
+    /// A window's current frame in AppKit global coordinates, used to check what a window
     /// actually accepted after we asked it to move.
     static func frame(of win: AXUIElement) -> CGRect? {
         axFrame(win).map(cgToAppKit)

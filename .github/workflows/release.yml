@@ -20,7 +20,7 @@ jobs:
         run: ./scripts/make_dmg.sh release
 
       # make_dmg.sh names the image from the version inside the bundle, so the tag and the
-      # bundle have to agree or the release would ship a build labelled something else.
+      # bundle have to agree or the release would ship a build labeled something else.
       - name: Check the tag matches the version in the bundle
         run: |
           VERSION="$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" \
