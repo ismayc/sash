@@ -7,6 +7,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private let hotkeys = HotkeyManager()
     private var customWindow: CustomSetupWindowController?
+    /// Held while the reserved-space editor is up, so it isn't deallocated mid-drag.
+    private var reservedSpaceEditor: ReservedSpaceController?
 
     // Drag-to-snap state (persisted in UserDefaults).
     private var activeLayout: Layout?
@@ -14,13 +16,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var requireShiftHeld = false
 
     // Auto-arrange state (persisted in UserDefaults).
-    /// The screen the user *asked* to keep tiled. Deliberately not cleared when that screen goes
-    /// away — a monitor asleep or unplugged pauses auto-arrange, and it resumes by itself once
-    /// the screen is back. What is actually running is `autoArrange.displayID`.
-    private var autoArrangeDisplayID: CGDirectDisplayID?
-    /// The chosen screen's name, kept so the menu can still say which display it is waiting for
-    /// after that display has stopped reporting one.
-    private var autoArrangeDisplayName: String?
+    /// What the user *asked* to keep tiled: nothing, one display, or all of them. Deliberately
+    /// not cleared when a chosen screen goes away — a monitor asleep or unplugged pauses
+    /// auto-arrange, and it resumes by itself once the screen is back. What is actually running
+    /// is `autoArrange.displayIDs`.
+    private var autoArrangeScope: AutoArrangeScope = .off
+    /// The chosen screens' names, kept so the menu can still say which displays it is waiting
+    /// for after they have stopped reporting one.
+    private var autoArrangeDisplayNames: [CGDirectDisplayID: String] = [:]
     private var autoArrangeChoices: [Int: AutoArrangeChoice] = [:]
 
     /// Window counts that get their own layout picker in the menu. Three and four are where
@@ -66,6 +69,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         loadHoldPreference()
         loadAutoArrangeChoices()
+        loadAutoArrangeScope()
         if defaults.object(forKey: "activeDisplayID") != nil {
             activeDisplayID = CGDirectDisplayID(defaults.integer(forKey: "activeDisplayID"))
         }
@@ -90,14 +94,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             armDragSnap(layout, displayID: activeDisplayID, persist: false)
         }
 
-        // Restore auto-arrange. It starts only if that screen is attached right now, and waits
-        // for it otherwise rather than dropping the preference.
-        if defaults.object(forKey: "autoArrangeDisplayID") != nil {
-            autoArrangeDisplayID = CGDirectDisplayID(defaults.integer(forKey: "autoArrangeDisplayID"))
-            autoArrangeDisplayName = defaults.string(forKey: "autoArrangeDisplayName")
-            reconcileAutoArrange()
-            rebuildMenu()
-        }
+        // Restore auto-arrange. A chosen screen that isn't attached right now is waited for
+        // rather than dropped; "all monitors" simply resolves to whatever is plugged in.
+        reconcileAutoArrange()
+        rebuildMenu()
     }
 
     // MARK: - Menu bar
@@ -160,6 +160,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                   action: nil, keyEquivalent: "")
         autoHint.isEnabled = false
         menu.addItem(autoHint)
+        menu.addItem(.separator())
+
+        // --- Reserved space (applies to snapping and auto-arrange alike) ---
+        menu.addItem(reservedSpaceMenuItem())
         menu.addItem(.separator())
 
         // Custom Setup.
@@ -230,21 +234,69 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return header
     }
 
+    /// The auto-arrange picker: off, every monitor at once, or whichever ones you tick.
+    ///
+    /// The monitors are ticks rather than a one-of-these choice, so two screens out of three is
+    /// as easy to say as one. "All monitors" stays a separate entry because it means something
+    /// the ticks can't: *and whatever you plug in next*. Each click closes the menu, as menu
+    /// clicks do — reopen it to tick the next monitor.
     private func autoArrangeMenuItem() -> NSMenuItem {
         let header = NSMenuItem(title: "Auto-arrange windows on:  \(autoArrangeStatus)",
                                 action: nil, keyEquivalent: "")
-        header.submenu = monitorSubmenu(noneTitle: "Off", selected: autoArrangeDisplayID,
-                                        action: #selector(chooseAutoArrangeMonitor(_:)))
+        let submenu = NSMenu()
+        submenu.addItem(scopeItem(title: "Off", scope: .off))
+        submenu.addItem(scopeItem(title: "All monitors", scope: .allDisplays))
+        submenu.addItem(.separator())
+
+        let hint = NSMenuItem(title: "…or tick the monitors you want:", action: nil, keyEquivalent: "")
+        hint.isEnabled = false
+        submenu.addItem(hint)
+        for (i, screen) in NSScreen.screens.enumerated() {
+            guard let id = screen.displayID else { continue }
+            let item = NSMenuItem(title: screen.label(index: i),
+                                  action: #selector(toggleAutoArrangeMonitor(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = NSNumber(value: id)
+            item.state = autoArrangeScope.includes(id) ? .on : .off
+            submenu.addItem(item)
+        }
+        submenu.addItem(.separator())
+        submenu.addItem(refreshMonitorsItem())
+        header.submenu = submenu
         return header
     }
 
-    /// What the auto-arrange header reads. A chosen-but-absent screen says so by name instead of
+    private func scopeItem(title: String, scope: AutoArrangeScope) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: #selector(chooseAutoArrangeScope(_:)),
+                              keyEquivalent: "")
+        item.target = self
+        item.representedObject = scope
+        item.state = (autoArrangeScope == scope) ? .on : .off
+        return item
+    }
+
+    /// What the auto-arrange header reads. Chosen-but-absent screens say so by name instead of
     /// reading "Off", because the preference is paused, not cancelled — "Off" would be a lie that
     /// invites you to switch it on again.
     private var autoArrangeStatus: String {
-        guard let desired = autoArrangeDisplayID else { return "Off" }
-        if let screen = NSScreen.screen(withID: desired) { return screen.uniqueDisplayName }
-        return "\(autoArrangeDisplayName ?? "Chosen display") — waiting, not connected"
+        switch autoArrangeScope {
+        case .off:
+            return "Off"
+        case .allDisplays:
+            return "All monitors (\(NSScreen.screens.count) connected)"
+        case .displays(let ids):
+            let present = NSScreen.screens.filter { $0.displayID.map(ids.contains) ?? false }
+            let waiting = ids.count - present.count
+            guard !present.isEmpty else {
+                let names = ids.compactMap { autoArrangeDisplayNames[$0] }.sorted()
+                let known = names.isEmpty ? "Chosen displays" : names.joined(separator: " + ")
+                return "\(known) — waiting, not connected"
+            }
+            // Two names still read as names; beyond that a count is kinder than a run-on title.
+            let names = present.map(\.uniqueDisplayName)
+            let base = names.count <= 2 ? names.joined(separator: " + ") : "\(names.count) monitors"
+            return waiting == 0 ? base : "\(base) (+\(waiting) waiting)"
+        }
     }
 
     /// A picker for how auto-arrange should tile exactly `count` windows: the even grid, then
@@ -284,8 +336,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return header
     }
 
-    /// A monitor picker: an "everything off" entry, then every attached screen. Shared by the
-    /// drag-snap and auto-arrange pickers so they stay labelled the same way.
+    /// A picker for the space Sash must leave alone on each attached screen. Picking a monitor
+    /// opens the editor *on that monitor*, because the thing being protected is on the desktop:
+    /// the only way to know you've cleared it is to see it.
+    private func reservedSpaceMenuItem() -> NSMenuItem {
+        let store = ScreenMarginsStore.shared
+        let header = NSMenuItem(title: "Keep space clear:  \(reservedSpaceStatus)",
+                                action: nil, keyEquivalent: "")
+        let submenu = NSMenu()
+        for (i, s) in NSScreen.screens.enumerated() {
+            let margins = store.margins(for: s.uniqueDisplayName)
+            let suffix = margins.isEmpty ? "" : "  —  \(margins.summary)"
+            let item = NSMenuItem(title: s.label(index: i) + suffix,
+                                  action: #selector(editReservedSpace(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = s.displayID.map { NSNumber(value: $0) }
+            item.state = margins.isEmpty ? .off : .on
+            submenu.addItem(item)
+        }
+        submenu.addItem(.separator())
+        let clear = NSMenuItem(title: "Use the whole of every screen",
+                               action: #selector(clearReservedSpace), keyEquivalent: "")
+        clear.target = self
+        submenu.addItem(clear)
+        header.submenu = submenu
+        return header
+    }
+
+    /// What the reserved-space header reads: the display kept clear, or how many of them. A
+    /// display that isn't attached still counts — the setting is remembered by name, so the
+    /// strip is still protected when that monitor comes back.
+    private var reservedSpaceStatus: String {
+        let store = ScreenMarginsStore.shared
+        let reserved = NSScreen.screens
+            .filter { !store.margins(for: $0.uniqueDisplayName).isEmpty }
+        switch reserved.count {
+        case 0: return store.isEmpty ? "Nothing" : "Only on a monitor that isn't connected"
+        case 1: return "\(reserved[0].uniqueDisplayName) — "
+            + store.margins(for: reserved[0].uniqueDisplayName).summary
+        default: return "\(reserved.count) monitors"
+        }
+    }
+
+    /// A monitor picker: an "everything off" entry, then every attached screen. Used by the
+    /// drag-snap picker; auto-arrange builds its own because its choices are scopes rather than
+    /// display ids, but both share the screen labels and the re-scan below.
     private func monitorSubmenu(noneTitle: String, selected: CGDirectDisplayID?,
                                 action: Selector) -> NSMenu {
         let submenu = NSMenu()
@@ -301,13 +396,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             item.state = (s.displayID == selected) ? .on : .off
             submenu.addItem(item)
         }
-        // A manual re-scan, sitting where you look when the monitor you expected isn't listed.
         submenu.addItem(.separator())
+        submenu.addItem(refreshMonitorsItem())
+        return submenu
+    }
+
+    /// A manual re-scan, sitting where you look when the monitor you expected isn't listed.
+    private func refreshMonitorsItem() -> NSMenuItem {
         let refresh = NSMenuItem(title: "Refresh monitors", action: #selector(refreshMonitors),
                                  keyEquivalent: "")
         refresh.target = self
-        submenu.addItem(refresh)
-        return submenu
+        return refresh
     }
 
     // MARK: - Snap actions
@@ -361,10 +460,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    // MARK: - Reserved space
+
+    /// Open the drag-an-edge editor on the chosen screen.
+    @objc private func editReservedSpace(_ sender: NSMenuItem) {
+        guard let id = (sender.representedObject as? NSNumber)?.uint32Value,
+              let screen = NSScreen.screen(withID: id) else { return }
+        let controller = ReservedSpaceController(screen: screen) { [weak self] in
+            self?.reservedSpaceEditor = nil
+            self?.reservedSpaceChanged()
+        }
+        reservedSpaceEditor = controller
+        controller.begin()
+    }
+
+    @objc private func clearReservedSpace() {
+        ScreenMarginsStore.shared.clearAll()
+        reservedSpaceChanged()
+    }
+
+    /// Re-tile straight away so a newly-protected strip is cleared now rather than at the next
+    /// window change — the same reasoning as picking an auto-arrange layout.
+    private func reservedSpaceChanged() {
+        if autoArrange.isRunning { autoArrange.arrangeNow() }
+        rebuildMenu()
+    }
+
     // MARK: - Auto-arrange
 
-    @objc private func chooseAutoArrangeMonitor(_ sender: NSMenuItem) {
-        setAutoArrange(displayID: (sender.representedObject as? NSNumber)?.uint32Value)
+    @objc private func chooseAutoArrangeScope(_ sender: NSMenuItem) {
+        guard let scope = sender.representedObject as? AutoArrangeScope else { return }
+        setAutoArrange(scope)
+    }
+
+    /// Tick or untick one monitor, leaving the others as they are.
+    @objc private func toggleAutoArrangeMonitor(_ sender: NSMenuItem) {
+        guard let id = (sender.representedObject as? NSNumber)?.uint32Value else { return }
+        setAutoArrange(autoArrangeScope.toggling(id, attached: NSScreen.screens.compactMap(\.displayID)))
     }
 
     /// Pin how a given window count gets tiled, and re-tile straight away so the pick is visible
@@ -384,36 +516,70 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// ⌃⌥⌘A: flip auto-arrange on for whichever screen the mouse is on, and off again if it
-    /// was already watching that screen. The one-keystroke version of the menu picker.
+    /// ⌃⌥⌘A: tick the screen the mouse is on in or out of auto-arrange — the one-keystroke
+    /// version of ticking it in the menu. Pressed on each of two monitors in turn, it builds
+    /// the same pair the menu would; pressed on the last one still on, it switches off.
     private func toggleAutoArrangeUnderMouse() {
-        let id = Geometry.screenUnderMouse.displayID
-        setAutoArrange(displayID: autoArrangeDisplayID == id ? nil : id)
+        guard let id = Geometry.screenUnderMouse.displayID else { return }
+        setAutoArrange(autoArrangeScope.toggling(id, attached: NSScreen.screens.compactMap(\.displayID)))
     }
 
-    /// Keep `displayID` tiled (or stop, when nil). This records the user's *choice*; whether it
-    /// is running right now follows from that screen being attached.
-    private func setAutoArrange(displayID: CGDirectDisplayID?) {
-        autoArrangeDisplayID = displayID
-        autoArrangeDisplayName = NSScreen.screen(withID: displayID)?.uniqueDisplayName
-        defaults.set(displayID.map { Int($0) }, forKey: "autoArrangeDisplayID")
-        defaults.set(autoArrangeDisplayName, forKey: "autoArrangeDisplayName")
+    /// Record what the user asked to keep tiled. Whether it is running right now follows from
+    /// which of those displays are actually attached.
+    private func setAutoArrange(_ scope: AutoArrangeScope) {
+        autoArrangeScope = scope
+        rememberDisplayNames(for: scope)
+        defaults.set(scope.rawValue, forKey: "autoArrangeScope")
         reconcileAutoArrange()
         rebuildMenu()
     }
 
-    /// Start or stop auto-arrange so it is running exactly when the screen it was switched on for
-    /// is attached. Returns whether that changed anything, so callers can tell a resume from a
-    /// screen that was already being watched.
+    /// Note the names of the chosen displays while they are attached to report them, so the menu
+    /// can still say *which* monitor it is waiting for once that monitor has stopped answering.
+    private func rememberDisplayNames(for scope: AutoArrangeScope) {
+        guard case .displays(let ids) = scope else { return }
+        for screen in NSScreen.screens {
+            guard let id = screen.displayID, ids.contains(id) else { continue }
+            autoArrangeDisplayNames[id] = screen.uniqueDisplayName
+        }
+        autoArrangeDisplayNames = autoArrangeDisplayNames.filter { ids.contains($0.key) }
+        defaults.set(Dictionary(uniqueKeysWithValues: autoArrangeDisplayNames.map { (String($0.key), $0.value) }),
+                     forKey: "autoArrangeDisplayNames")
+    }
+
+    /// Read the auto-arrange preference, carrying over the superseded single-display settings so
+    /// an existing install keeps tiling the screen it was already tiling.
+    private func loadAutoArrangeScope() {
+        if let raw = defaults.string(forKey: "autoArrangeScope") {
+            autoArrangeScope = AutoArrangeScope(rawValue: raw)
+        } else if defaults.object(forKey: "autoArrangeDisplayID") != nil {
+            autoArrangeScope = .displays([CGDirectDisplayID(defaults.integer(forKey: "autoArrangeDisplayID"))])
+            defaults.set(autoArrangeScope.rawValue, forKey: "autoArrangeScope")
+        }
+        if let stored = defaults.dictionary(forKey: "autoArrangeDisplayNames") as? [String: String] {
+            for (key, name) in stored {
+                if let id = CGDirectDisplayID(key) { autoArrangeDisplayNames[id] = name }
+            }
+        } else if let legacy = defaults.string(forKey: "autoArrangeDisplayName"),
+                  case .displays(let ids) = autoArrangeScope, let id = ids.first {
+            autoArrangeDisplayNames[id] = legacy
+        }
+        defaults.removeObject(forKey: "autoArrangeDisplayID")
+        defaults.removeObject(forKey: "autoArrangeDisplayName")
+    }
+
+    /// Start or stop auto-arrange so it is running on exactly the displays the current scope
+    /// resolves to. Returns whether that changed anything, so callers can tell a resume from a
+    /// set of screens that were already being watched.
     @discardableResult
     private func reconcileAutoArrange() -> Bool {
         let attached = NSScreen.screens.compactMap(\.displayID)
-        let target = DisplayTarget.active(desired: autoArrangeDisplayID, attached: attached)
-        guard target != autoArrange.displayID else { return false }
-        if let target {
-            autoArrange.start(on: target)
-        } else {
+        let target = Set(autoArrangeScope.active(attached: attached))
+        guard target != autoArrange.displayIDs else { return false }
+        if target.isEmpty {
             autoArrange.stop()
+        } else {
+            autoArrange.start(on: target)
         }
         return true
     }

@@ -51,7 +51,7 @@ enum WindowEngine {
     /// Snap a specific window into `zone` on a given screen.
     static func snap(_ window: ManagedWindow, to zone: Zone, on screen: NSScreen) {
         setFrame(window.element, appKitRect: zone.appKitRect(on: screen))
-        keepOnScreenAfterSettling(window.element, within: screen.visibleFrame)
+        keepOnScreenAfterSettling(window.element, within: screen.workArea)
     }
 
     /// Snap the currently focused window into `zone` on the screen under the mouse.
@@ -59,7 +59,7 @@ enum WindowEngine {
     static func snapFocused(to zone: Zone, on screen: NSScreen = Geometry.screenUnderMouse) -> Bool {
         guard let win = focusedWindow() else { return false }
         setFrame(win, appKitRect: zone.appKitRect(on: screen))
-        keepOnScreenAfterSettling(win, within: screen.visibleFrame)
+        keepOnScreenAfterSettling(win, within: screen.workArea)
         return true
     }
 

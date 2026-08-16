@@ -44,10 +44,13 @@ Switcher, Quick Snapper); nothing keeps a screen continuously tiled on its own.
 - **Custom layout designer** — draw your own zones (any 1–9 window arrangement), name them, reuse them.
 - **Keyboard shortcuts** — send the focused window to a zone with a hotkey.
 - **Menu-bar picker** — pick a zone from the menu.
-- **Auto-arrange** — one toggle per screen: Sash works out the best tiling for whatever
-  windows are there and keeps it that way as windows open and close. The feature that sets
-  Sash apart from other zone snappers. Three- and four-window arrangements get a standing
-  choice, so you can pin your own split or plain thirds/quarters.
+- **Auto-arrange** — on any monitors you like: one, two of three, or **all of them**. Sash works
+  out the best tiling for whatever windows are on each and keeps it that way as windows open and
+  close. The feature that sets Sash apart from other zone snappers. Three- and four-window
+  arrangements get a standing choice, so you can pin your own split or plain thirds/quarters.
+- **Keep space clear** — reserve a strip of a screen by dragging its edge in, and no tile will
+  ever cover it. For desktop widgets, a wallpaper clock, anything that doesn't reserve its own
+  space the way the Dock does.
 - **Per-monitor** — arm snapping on one display and leave your other monitors free. Displays
   are picked up as you plug them in, and a monitor you've switched something on for is
   remembered while it's asleep or unplugged.
@@ -77,16 +80,50 @@ re-scan.
 A monitor you've switched something on for is **remembered while it's away**. Unplug it, or let
 it sleep, and auto-arrange pauses rather than switching itself off — the menu reads
 `LG ULTRAWIDE — waiting, not connected` — then resumes on its own when the display is back.
-Your choice survives the cable, in other words; only picking **Off** clears it.
+Your choice survives the cable, in other words; only unticking it clears it. The menu says which
+ones it's still waiting for — `LG ULTRAWIDE + Studio Display — waiting, not connected` — and
+with several monitors ticked the ones still plugged in carry on being tiled meanwhile.
+
+## Keeping space clear (widgets, clocks, anything on the desktop)
+
+Menu bar ▸ **Keep space clear:** ▸ pick a monitor. That screen dims to show the area Sash is
+allowed to use; **drag any edge of it inwards** until whatever you're protecting is outside,
+then press **⏎** (or **Save**). **Esc** cancels, **⌫** hands the whole screen back.
+
+The strip you reserve stays see-through while you drag, because the whole point is to aim at
+something on your desktop — you clear the widget by looking at it, not by guessing a number.
+The pixel count shows beside the edge as you go.
+
+From then on that strip is off limits to everything Sash does on that screen: drag-to-snap,
+the hotkeys, the menu-bar zone picker and auto-arrange all size their tiles to what's left.
+The Dock and the menu bar were already excluded — this is for the things that don't reserve
+their own space.
+
+Reserved space is remembered **per monitor, by name**, so it survives unplugging, sleep, a KVM
+switch and a restart. A screen can't be reserved down to nothing: at most 80% of its width or
+height can be taken, and dragging further just stops.
+
+**Use the whole of every screen**, at the bottom of the same menu, clears the lot.
 
 ## Auto-arrange (let Sash decide)
 
-Menu bar ▸ **Auto-arrange windows on:** ▸ pick a monitor (or **Off**) — or press **⌃⌥⌘A** to
-toggle it for whichever screen your mouse is on.
+Menu bar ▸ **Auto-arrange windows on:** ▸ **tick the monitors you want** — any combination, two
+of three included. **All monitors** and **Off** sit above them, and **⌃⌥⌘A** ticks whichever
+screen your mouse is on in or out.
 
-Sash tiles every window on that screen immediately, then keeps it tiled: open a window and it
-re-tiles to fit, close one and the rest expand to fill. Toggle it off and the windows stay
+Sash tiles every window on those screens immediately, then keeps them tiled: open a window and
+it re-tiles to fit, close one and the rest expand to fill. Untick a monitor and its windows stay
 exactly where they are.
+
+Each screen is arranged on its own terms — its own window count, its own aspect ratio, its own
+reserved space — and a screen whose windows haven't changed is left alone. Watching three
+monitors costs no more polling than watching one, because the window list Sash checks each
+second is system-wide either way.
+
+**All monitors is not the same as ticking all of them.** Ticking means *those* monitors,
+however many arrive later; **All monitors** means "and whatever I plug in next" — a new display
+starts being kept tiled the moment it appears. Unticking one monitor while **All monitors** is
+on names the rest explicitly, so "all" never quietly comes to mean "all but that one".
 
 The shape comes from the window count *and* the screen's aspect ratio, so a wide screen splits
 into columns where a laptop falls into a grid:
@@ -210,14 +247,18 @@ and is verified manually rather than unit-tested.
 
 | Target | What |
 |---|---|
-| `SashKit` | Pure, testable logic: `Zone`/`Layout` geometry, coordinate math, auto-arrange tiling, display targeting, layout persistence. No AppKit runtime deps. |
-| `Sash` | The menu-bar app: window engine (Accessibility API), drag-snap overlay, auto-arrange watcher, hotkeys, the Custom Setup window. |
+| `SashKit` | Pure, testable logic: `Zone`/`Layout` geometry, coordinate math, auto-arrange tiling and scope, display targeting, reserved-space margins, layout persistence. No AppKit runtime deps. |
+| `Sash` | The menu-bar app: window engine (Accessibility API), drag-snap overlay, auto-arrange watcher, hotkeys, the Custom Setup window, the reserved-space editor. |
 | `SashTests` | Dependency-free test runner (runs via `swift run`). |
 
 macOS exposes other apps' windows through the **Accessibility API** (`AXUIElement`). Sash
 reads a window and sets its `kAXPosition` / `kAXSize`, translating between AppKit (bottom-left
 origin) and Accessibility (top-left origin) coordinates. Window ↔ on-screen matching uses the
 private-but-stable `_AXUIElementGetWindow`.
+
+Every part of the app that decides how much of a screen it may use goes through one property,
+`NSScreen.workArea` — the visible frame less whatever you've reserved on that display — so
+snapping, the hotkeys, auto-arrange and the keep-on-screen clamp can't disagree about it.
 
 ## License
 

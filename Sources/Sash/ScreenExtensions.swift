@@ -32,11 +32,23 @@ enum Geometry {
 extension Zone {
     /// Resolve this zone to an AppKit global rect on the given screen.
     func appKitRect(on screen: NSScreen) -> CGRect {
-        rect(inVisibleFrame: screen.visibleFrame)
+        rect(inVisibleFrame: screen.workArea)
     }
 }
 
 extension NSScreen {
+    /// The part of this screen Sash may put a window in: the visible frame, less anything the
+    /// user has reserved on this display.
+    ///
+    /// `visibleFrame` already excludes the menu bar and the Dock, because those reserve their
+    /// space with the window server. Desktop widgets and the like reserve nothing, so this is
+    /// the only thing standing between them and a tile. Everything that sizes or clamps a window
+    /// goes through here rather than `visibleFrame` — an area Sash refuses to *snap* into but
+    /// happily *shoves* a window back into would keep the strip clear only some of the time.
+    var workArea: CGRect {
+        ScreenMarginsStore.shared.margins(for: uniqueDisplayName).applied(to: visibleFrame)
+    }
+
     /// The CoreGraphics display id backing this screen, used to pin drag-snap to one monitor.
     var displayID: CGDirectDisplayID? {
         (deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value
