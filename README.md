@@ -109,7 +109,7 @@ height can be taken, and dragging further just stops.
 
 Menu bar ▸ **Auto-arrange windows on:** ▸ **tick the monitors you want**, any combination, two
 of three included. **All monitors** and **Off** sit above them, and **⌃⌥⌘A** ticks whichever
-screen your mouse is on in or out.
+screen your mouse is on in or out. **⌃⌥⌘O** turns it off on every screen, the same as **Off**.
 
 Sash tiles every window on those screens immediately, then keeps them tiled: open a window and
 it re-tiles to fit, close one and the rest expand to fill. Untick a monitor and its windows stay
@@ -189,6 +189,7 @@ Modifier stack: **⌃⌥⌘** (Control-Option-Command)
 | ⌃⌥⌘ ↑ | Maximize |
 | ⌃⌥⌘ 1–9 | Send focused window to zone 1–9 of the **armed** layout |
 | ⌃⌥⌘ A | Toggle **auto-arrange** on the screen under the mouse |
+| ⌃⌥⌘ O | Turn **auto-arrange** off on every screen |
 
 Snaps apply to the focused window (on the armed monitor, or the screen under the mouse).
 

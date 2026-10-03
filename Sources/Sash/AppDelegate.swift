@@ -156,7 +156,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         for count in Self.choosableCounts {
             menu.addItem(autoArrangeChoiceMenuItem(count: count))
         }
-        let autoHint = NSMenuItem(title: "Tip: ⌃⌥⌘A toggles it on the screen under the mouse",
+        let autoHint = NSMenuItem(title: "Tip: ⌃⌥⌘A toggles the screen under the mouse; ⌃⌥⌘O turns all off",
                                   action: nil, keyEquivalent: "")
         autoHint.isEnabled = false
         menu.addItem(autoHint)
@@ -668,6 +668,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotkeys.bind(keyCode: HotkeyManager.arrowUp,    action: snap("Maximize", "Full"))
         hotkeys.bind(keyCode: HotkeyManager.letterA) { [weak self] in
             self?.toggleAutoArrangeUnderMouse()
+        }
+        // ⌃⌥⌘O: auto-arrange off everywhere, the same as the menu's Off.
+        hotkeys.bind(keyCode: HotkeyManager.letterO) { [weak self] in
+            self?.setAutoArrange(.off)
         }
         hotkeys.start()
     }

@@ -28,6 +28,7 @@ final class HotkeyManager {
     static let arrowUp: UInt16 = 126
     static let digits: [UInt16] = [18, 19, 20, 21, 23, 22, 26, 28, 25] // 1...9
     static let letterA: UInt16 = 0
+    static let letterO: UInt16 = 31
 
     func bind(keyCode: UInt16, action: @escaping () -> Void) {
         bindings.append(Binding(keyCode: keyCode, action: action))
